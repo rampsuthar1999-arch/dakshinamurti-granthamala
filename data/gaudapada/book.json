@@ -1234,7 +1234,7 @@
    "group": "p1",
    "start": 184,
    "end": 262,
-   "slokas": 8
+   "slokas": 9
   },
   {
    "id": "s10",
@@ -1252,7 +1252,7 @@
    "group": "p1",
    "start": 320,
    "end": 417,
-   "slokas": 7
+   "slokas": 9
   },
   {
    "id": "s12",
@@ -1297,7 +1297,7 @@
    "group": "p1",
    "start": 441,
    "end": 475,
-   "slokas": 4
+   "slokas": 5
   },
   {
    "id": "s17",
@@ -1324,7 +1324,7 @@
    "group": "p2",
    "start": 562,
    "end": 738,
-   "slokas": 24
+   "slokas": 38
   },
   {
    "id": "pk3",
@@ -1333,7 +1333,7 @@
    "group": "p2",
    "start": 739,
    "end": 899,
-   "slokas": 36
+   "slokas": 48
   },
   {
    "id": "pk4",
@@ -1342,7 +1342,7 @@
    "group": "p2",
    "start": 900,
    "end": 1112,
-   "slokas": 71
+   "slokas": 100
   }
  ],
  "kind": "granth"

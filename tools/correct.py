@@ -5,6 +5,13 @@ import pickle, re, itertools, functools, sys
 sys.path.insert(0, '/home/claude/gs')
 V = pickle.load(open('/home/claude/gs/vocab.pkl', 'rb'))
 MINF = 3
+# extra reference texts (e.g. the standard Māṇḍūkya-kārikā text): their words count as well attested
+import json as _json, os as _os
+for _p in ['/home/claude/ref/kref.json']:
+    if _os.path.exists(_p):
+        for _v in _json.load(open(_p)).values():
+            for _w in re.findall(r'[\u0900-\u0963\u0970-\u097F]+', ' '.join(_v)):
+                V[_w] = V.get(_w, 0) + MINF
 
 # (wrong, right) substring confusions observed in this OCR
 SUBS = [('ट्रैत', 'द्वैत'), ('ट्वैत', 'द्वैत'), ('द्रैत', 'द्वैत'), ('दट्वैत', 'द्वैत'), ('ट्रै', 'द्वै'), ('द्रय', 'द्वय'),

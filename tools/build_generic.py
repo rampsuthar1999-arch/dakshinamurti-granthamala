@@ -62,9 +62,18 @@ def scan_normalise(lines, header_y):
     return ls
 
 
+def verse_end_fix(t):
+    """OCR damage around a verse number: '॥ १ ०॥' → '॥ १०॥', '॥ १४।.।' → '॥ १४॥', visarga read as र/३/ए/द before ॥."""
+    t = re.sub(r'([।॥|])[\s:.]*([०-९])[\s:.]+([०-९])\s*([।॥|])', r'\1 \2\3\4', t)
+    t = re.sub(r'([।॥|])\s*([०-९]{1,3})\s*[।॥|][\s.,:]*[।॥|]?(?=\s*$|\s+[^\s०-९])', r'\1 \2॥', t)
+    t = re.sub(r'([।॥|])\s*([०-९]{1,3})\s*[।॥|][।॥|\s.,:]*$', r'\1 \2॥', t)
+    t = re.sub(r'(?<=[क-हा-ौ])(?:ः?[र३एद]|ः)\s*([।॥|]{1,2}\s*[०-९]{1,3}\s*॥)', r'ः\1', t)
+    return t
+
+
 def fix_text(t, cfg):
     if cfg.get('scan'):
-        t = scan_clean(t)
+        t = verse_end_fix(scan_clean(verse_end_fix(t)))
     if cfg.get('vocab_correct'):
         sys.path.insert(0, '/home/claude/gs')
         from correct import correct_text
@@ -78,8 +87,70 @@ def fix_text(t, cfg):
     return t
 
 
+# ---------------------------------------------------------------- reference text for verses
+REFMARK = '\u2063'
+REFH = '\u2064'   # first half-line of a reference verse
+
+
+def apply_ref(P, cfg):
+    """Find each printed verse in the OCR lines by fuzzy match against a reference text (in order), and replace the
+    noisy lines with the reference half-lines + the right number. Lines inside the header band are kept if they match."""
+    sys.path.insert(0, '/home/claude/gs')
+    import kmatch
+    R = json.load(open(cfg['ref_karika']))
+    hy = cfg['header_y']
+    stats = {}
+    for c, (a, b) in cfg['ref_ranges'].items():
+        lines = []
+        for pn in range(a, b + 1):
+            P[pn - 1].sort(key=lambda l: (l[1], l[0]))
+            for k, l in enumerate(P[pn - 1]):
+                if l[1] > 25:
+                    lines.append(((pn, k), l[4]))
+        ref = {int(k.split('.')[1]): v for k, v in R.items() if k.split('.')[0] == str(c)}
+        seq = kmatch.choose(kmatch.candidates(lines, ref))
+        stats[c] = (len(seq), len(ref))
+        for (pn, k), n, sc, p1 in seq:
+            h1, h2 = (x.rstrip(' ।॥') for x in ref[n])
+            num = ''.join('०१२३४५६७८९'[int(d)] for d in str(n))
+            pg = P[pn - 1]; l2 = pg[k]
+            l2[4] = REFMARK + h2 + ' ॥ ' + num + '॥'
+            if l2[1] <= hy:
+                l2[1] = hy + 1.0; l2[3] = max(l2[3], hy + 2)
+            if p1 is not None:
+                l1 = P[p1[0] - 1][p1[1]]
+                l1[4] = REFH + h1 + '।'
+                if p1[0] == pn and l1[1] <= hy:
+                    l1[1] = hy + 0.5
+            else:   # first half merged into this line, or unreadable on the scan: supply it just above
+                pg.append([l2[0], l2[1] - 8, l2[2], l2[1] - 1, REFH + h1 + '।'])
+        for pn in range(a, b + 1):
+            P[pn - 1].sort(key=lambda l: (l[1], l[0]))
+    print('reference verses placed:', stats)
+    return P
+
+
 # ---------------------------------------------------------------- verse marking (indented-short / tall lines with ॥N॥)
 HINDI = re.compile(r'(^|\s)(है|हैं|में|के|की|का|से|नहीं|क्या|को|यह|भी|और|तो|कि|हो|था|थे|गया|हुआ|कहते|जाता|होता|ने|पर|लिये|लिए|इस|उस|जो|वह|एक)(\s|$|[।,?!])')
+
+
+_STRONG = set('है हैं नहीं में गया गयी गई जाता जाती जाते होता होती होते था थी थे इसलिये इसलिए कहा कहते रहे रहा रही होगा होगी करते करता करो करना करें दिया दिये लिया बात मतलब बताया बताते हुआ हुई लिये लिए सब कुछ अपने अपना हम हमें तुम आप गये गए और भी यह वह इस उस इसी उसी के की से ने क्या तक अब जब यानी अर्थात् अर्थात्‌ जाये जायेगा सकता सकते चाहिये दोनों'.split())
+_WEAK = set('का को हो तो कि ही जो'.split())
+
+
+class _Hindi:
+    """is this line Hindi prose (not a Sanskrit verse line)? Strong Hindi-only words count except as a stray first token
+    (margin junk); ambiguous ones (का, को, हो…) only in pairs."""
+    def search(self, t):
+        toks = re.findall(r'[\u0900-\u0963\u0970-\u097F\u200c\u200d]+', t)
+        strong = [k for k, w in enumerate(toks) if w in _STRONG]
+        weak = sum(w in _WEAK for w in toks)
+        if any(k > 0 for k in strong) or (strong and len(toks) <= 2):
+            return True
+        return weak + len(strong) >= 2
+
+
+HINDI2 = _Hindi()
 
 
 def mark_verses(lines, header_y, wmax=0.85, loose=False):
@@ -113,8 +184,11 @@ def mark_verses(lines, header_y, wmax=0.85, loose=False):
             j -= 1
     if loose:   # skewed scans: recognise verses by content (Sanskrit lines ending in ॥N॥), not by indentation
         for i, l in enumerate(body):
+            if HINDI2.search(l[4]):
+                marked.discard(i)      # Hindi meaning that ends with the verse number
+        for i, l in enumerate(body):
             t = l[4].strip()
-            if not VNUM.search(t) or (i not in marked and (HINDI.search(t) or len(t) > 90)):
+            if not VNUM.search(t) or HINDI2.search(t) or (i not in marked and len(t) > 90) or len(re.findall(r'[\u0915-\u0939]', t)) < 8:
                 continue
             marked.add(i)
             for j in range(i - 1, max(-1, i - 4), -1):
@@ -124,6 +198,15 @@ def mark_verses(lines, header_y, wmax=0.85, loose=False):
                 marked.add(j)
                 if re.search(r'[।|]$', p) and i - j >= 1:
                     break
+        # number lost altogether: a Sanskrit half-line ending in । followed by one ending in ॥
+        for i in range(1, len(body)):
+            a_, b_ = body[i - 1][4].strip(), body[i][4].strip()
+            if i in marked or i - 1 in marked:
+                continue
+            if (re.search(r'[।|][\s.:;!,\'"…]*$', a_) and re.search(r'॥[^।॥]{0,7}$|[।॥|]\s*[०-९]{1,3}\s*[^\s।॥]{0,3}॥$', b_) and 18 <= len(a_) <= 95 and 18 <= len(b_) <= 80
+                    and not HINDI2.search(a_) and not HINDI2.search(b_)):
+                marked.update((i - 1, i))
+    marked |= {i for i, l in enumerate(body) if REFMARK in l[4] or REFH in l[4]}
     for i in marked:
         body[i][0] += 400
     return ls
@@ -181,6 +264,8 @@ def build(cfg):
                 for m in re.finditer(r'॥\s*([०-९]+)\s*॥\s*\(\s*([०-९]+)\s*\)', l[4]):
                     GLOB[(pn, dnum(m.group(1)))] = dnum(m.group(2))
     P = [[[l[0], l[1], l[2], l[3], fix_text(l[4], cfg)] for l in pg] for pg in P]
+    if cfg.get('ref_karika'):
+        P = apply_ref(P, cfg)
     hy = cfg['header_y']
     pages = [mark_verses([list(l) for l in pg if l[4]], hy, cfg.get('verse_w', 0.85), cfg.get('loose_verse', False)) for pg in P]
     if cfg.get('scan'):
@@ -221,6 +306,16 @@ def build(cfg):
             continue
         bl = split_verses(parse_section(pages, a, b, s['title'], header_y=hy, para_dx=cfg.get('para_dx', (8, 60)), verse_dx=300,
                                        full_w=cfg.get('full_w', 200), skip_pages=skip, drop_start=cfg.get('drop_start')))
+        if cfg.get('loose_verse'):   # Hindi lines caught at the top of a verse block go back to prose
+            nb_ = []
+            for blk in bl:
+                if blk['t'] == 'v':
+                    ls_ = blk['x'].split('\n')
+                    while len(ls_) > 1 and REFH not in ls_[0] and REFMARK not in ls_[0] and HINDI2.search(ls_[0]):
+                        nb_.append({'t': 'p', 'pg': blk['pg'], 'x': ls_.pop(0)})
+                    blk['x'] = '\n'.join(ls_)
+                nb_.append(blk)
+            bl = nb_
         if cfg.get('global_paren'):
             found = []
             for blk in bl:
@@ -246,8 +341,19 @@ def build(cfg):
                 for blk in bl:
                     if blk['t'] == 'v' and blk['x'].count('\n') >= 1:
                         blk['n'] = s['num']; blk['s'] = 1; found.append(s['num']); break
+        elif cfg.get('ref_karika') and s.get('maxn'):
+            found = []
+            for blk in bl:
+                if blk['t'] == 'v' and REFMARK in blk['x']:
+                    blk['x'] = blk['x'].replace(REFMARK, '').replace(REFH, '').replace(REFH, '')
+                    m = VNUM.search(blk['x'])
+                    if m and s.get('minn', 0) < dnum(m.group(1)) <= s['maxn']:
+                        blk['n'] = dnum(m.group(1)); blk['s'] = 1; found.append(blk['n']); continue
+                if blk['t'] == 'v':
+                    blk.pop('n', None); blk.pop('s', None)
+                blk['x'] = blk['x'].replace(REFMARK, '').replace(REFH, '')
         elif s.get('maxn'):
-            found = number_slokas_lis(bl, s['maxn'], start_after=s.get('minn', 0))
+            found = number_slokas_lis(bl, s['maxn'], start_after=s.get('minn', 0), relaxed=HINDI2 if cfg.get('loose_verse') else None)
             if cfg.get('header_kw'):
                 hdr = []
                 for pn in range(a, b + 1):
@@ -291,6 +397,9 @@ def build(cfg):
             x = polish(t, x)
             row = [t, blk['pg'], x]
             if blk.get('s') and s.get('num'):
+                if t == 'v' and cfg.get('loose_verse'):   # show the assigned number where OCR misread it
+                    x = re.sub(r'([।॥|]{1,2}\s*)[०-९]{1,3}(\s*[।॥|]{1,2}\s*)$', lambda m: m.group(1) + ''.join('०१२३४५६७८९'[int(c)] for c in str(blk['n'])) + m.group(2), x)
+                    row[2] = x
                 row.append(blk['n'])
                 slokas.append([s['num'], blk['n'], len(rows), blk['pg'], x.split('\n')[0][:80], s.get('id') or f's{k + 1}'])
             elif blk.get('c'):
@@ -556,6 +665,7 @@ def gs_secs(P, labels):
 CFG['gaudapada'] = dict(id='gaudapada', title='गौडपादसार', roman='Gauḍapāda Sāra', author='',
                         byline='माण्डूक्य-उपनिषत्-कारिका व्याख्या (भाग १–२)', kind='granth',
                         pages=gs_pages, header_y=46, end=GS_V1 + 558, drop_start=drop_title, labels_first=True, scan=True, verse_w=0.9, smooth_labels=True, volumes=[(1, GS_V1), (GS_V1 + 1, GS_V1 + 558)], vol_front=0, header_kw='कारिका', skip=list(range(GS_V1 + 1, 562)), first='s1', vocab_correct=True, loose_verse=True,
+                        ref_karika='/home/claude/ref/kref.json', ref_ranges={1: (150, GS_V1), 2: (562, 738), 3: (739, 899), 4: (900, GS_V1 + 558)},
                         sections=gs_secs, sec_label='प्रकरण', sec_abbr='प्र.',
                         groups={'front': 'प्रारम्भिक', 'p1': 'भाग १ · आगम प्रकरण', 'p2': 'भाग २'},
                         extra=[{'title': 'भाग १ · मुखपृष्ठ', 'page': 2}, {'title': 'भाग १ · अनुक्रमणिका', 'page': 3},

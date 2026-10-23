@@ -233,7 +233,7 @@ def polish(t, x):
     return x
 
 
-def number_slokas_lis(blocks, maxn, max_step=15, start_after=0):
+def number_slokas_lis(blocks, maxn, max_step=15, start_after=0, relaxed=None):
     """Choose verse numbers as the longest strictly increasing sequence (robust to stray/false numbers).
     OCR noise: a number > maxn is also tried with its last digit dropped (२९२ → २९)."""
     cands = []  # (block index, value)
@@ -275,6 +275,9 @@ def number_slokas_lis(blocks, maxn, max_step=15, start_after=0):
         if gap <= 0:
             continue
         cand = [i for i in range(a_ + 1, b_) if blocks[i]['t'] == 'v' and 's' not in blocks[i] and blocks[i]['x'].count('\n') >= 1]
+        if relaxed and len(cand) != gap:   # also single-line blocks that end in a (misread) verse number; never Hindi
+            cand = [i for i in range(a_ + 1, b_) if blocks[i]['t'] == 'v' and 's' not in blocks[i] and not relaxed.search(blocks[i]['x'])
+                    and (blocks[i]['x'].count('\n') >= 1 or VNUM.search(blocks[i]['x']))]
         if len(cand) == gap:
             for kk, i in enumerate(cand):
                 blocks[i]['n'] = na + 1 + kk; blocks[i]['s'] = 1; chosen[i] = na + 1 + kk
