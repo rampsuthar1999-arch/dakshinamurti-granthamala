@@ -63,8 +63,12 @@ def scan_normalise(lines, header_y):
 
 
 def verse_end_fix(t):
+    t = re.sub(r'(?<=[।॥|०-९\s])[0-9](?=[\s०-९]*[।॥|])', lambda m: '०१२३४५६७८९'[int(m.group(0))], t)   # Latin digit inside a verse number
     """OCR damage around a verse number: '॥ १ ०॥' → '॥ १०॥', '॥ १४।.।' → '॥ १४॥', visarga read as र/३/ए/द before ॥."""
-    t = re.sub(r'([।॥|])[\s:.]*([०-९])[\s:.]+([०-९])\s*([।॥|])', r'\1 \2\3\4', t)
+    t = re.sub(r'\s*श्री\s*भावतत्त्वप्रकाशिका\s*$', '', t)          # Naiṣkarmya: ṭīkā running head OCR'd onto the verse line
+    t = re.sub(r"([।॥|])[\s:.'‘’\"*]*([०-९](?:[\s:.'‘’\"*]*[०-९]){0,2})[\s'‘’\"*]*([।॥|])", lambda m: m.group(1) + ' ' + re.sub(r"[\s:.'‘’\"*]", '', m.group(2)) + m.group(3), t)
+    t = re.sub(r'[।॥|]{2,}(?=\s*[०-९])', '॥', t)
+    t = re.sub(r'(?<=[\u0915-\u0963ः:])\s+([०-९]{1,3})\s*॥', r' ॥ \1॥', t)          # opening danda lost: 'अस्त्यत: ५८॥'
     t = re.sub(r'([।॥|])\s*([०-९]{1,3})\s*[।॥|][\s.,:]*[।॥|]?(?=\s*$|\s+[^\s०-९])', r'\1 \2॥', t)
     t = re.sub(r'([।॥|])\s*([०-९]{1,3})\s*[।॥|][।॥|\s.,:]*$', r'\1 \2॥', t)
     t = re.sub(r'(?<=[क-हा-ौ])(?:ः?[र३एद]|ः)\s*([।॥|]{1,2}\s*[०-९]{1,3}\s*॥)', r'ः\1', t)
@@ -74,6 +78,8 @@ def verse_end_fix(t):
 def fix_text(t, cfg):
     if cfg.get('scan'):
         t = verse_end_fix(scan_clean(verse_end_fix(t)))
+    elif cfg.get('verse_fix'):
+        t = verse_end_fix(t)
     if cfg.get('vocab_correct'):
         sys.path.insert(0, '/home/claude/gs')
         from correct import correct_text
@@ -151,6 +157,8 @@ class _Hindi:
 
 
 HINDI2 = _Hindi()
+# a Sanskrit commentary sentence that closes with the verse number: '…मिति॥ ६१॥', '…इत्यर्थः॥ ४७॥'
+TIKA_END = re.compile(r'(?:इति|[ेी]ति|[मदरवनत]्?िति|इत्यर्थ[:ः]?|त्यर्थ[:ः]|ादिना|त्याह|इत्यादि)\s*[।॥|]+\s*[०-९]+\s*[।॥|]*\s*$')
 
 
 def mark_verses(lines, header_y, wmax=0.85, loose=False):
@@ -184,11 +192,11 @@ def mark_verses(lines, header_y, wmax=0.85, loose=False):
             j -= 1
     if loose:   # skewed scans: recognise verses by content (Sanskrit lines ending in ॥N॥), not by indentation
         for i, l in enumerate(body):
-            if HINDI2.search(l[4]):
-                marked.discard(i)      # Hindi meaning that ends with the verse number
+            if HINDI2.search(l[4]) or TIKA_END.search(l[4].strip()):
+                marked.discard(i)      # Hindi meaning / commentary sentence that ends with the verse number
         for i, l in enumerate(body):
             t = l[4].strip()
-            if not VNUM.search(t) or HINDI2.search(t) or (i not in marked and len(t) > 90) or len(re.findall(r'[\u0915-\u0939]', t)) < 8:
+            if not VNUM.search(t) or HINDI2.search(t) or TIKA_END.search(t) or (i not in marked and len(t) > 90) or len(re.findall(r'[\u0915-\u0939]', t)) < 8:
                 continue
             marked.add(i)
             for j in range(i - 1, max(-1, i - 4), -1):
@@ -306,6 +314,39 @@ def build(cfg):
             continue
         bl = split_verses(parse_section(pages, a, b, s['title'], header_y=hy, para_dx=cfg.get('para_dx', (8, 60)), verse_dx=300,
                                        full_w=cfg.get('full_w', 200), skip_pages=skip, drop_start=cfg.get('drop_start')))
+        if cfg.get('trim_verse'):    # keep only the short metrical lines at the end of a numbered verse block
+            nb_ = []
+            for blk in bl:
+                if blk['t'] == 'v' and VNUM.search(blk['x']):
+                    ls_ = blk['x'].split('\n')
+                    k_ = len(ls_)
+                    while k_ > 0 and len(ls_) - k_ < 4 and len(VNUM.sub('', ls_[k_ - 1]).strip()) <= 64:
+                        k_ -= 1
+                    if 0 < k_ < len(ls_) and len(ls_) - k_ >= 2:
+                        nb_.append({'t': 'p', 'pg': blk['pg'], 'x': ' '.join(ls_[:k_])})
+                        blk['x'] = '\n'.join(ls_[k_:])
+                    elif TIKA_END.search(ls_[-1]) or (len(ls_) >= 2 and len(ls_) - k_ < 2):
+                        blk['t'] = 'p'; blk['x'] = ' '.join(ls_); blk.pop('n', None)   # commentary laid out like verse
+                nb_.append(blk)
+            bl = nb_
+        if cfg.get('trim_verse'):    # a one-line verse: its earlier lines may have been taken as prose lines just above
+            for i_, blk in enumerate(bl):
+                if blk['t'] != 'v' or '\n' in blk['x'] or not VNUM.search(blk['x']):
+                    continue
+                want = 3 if len(VNUM.sub('', blk['x']).strip()) >= 44 else 1   # long metres have 4 lines
+                got = []
+                j_ = i_ - 1
+                while j_ >= 0 and len(got) < want:
+                    pb = bl[j_]
+                    if pb['t'] not in ('p', 'tr') or len(pb['x']) > 75 or len(pb['x']) < 20 or HINDI2.search(pb['x']) or TIKA_END.search(pb['x']) \
+                            or re.search(r'(?:[-—]|\s:)\s*$', pb['x']) or VNUM.search(pb['x']):
+                        break
+                    got.append(j_); j_ -= 1
+                if got:
+                    blk['x'] = '\n'.join([bl[j]['x'] for j in reversed(got)] + [blk['x']])
+                    for j in got:
+                        bl[j]['t'] = 'drop'
+            bl = [b for b in bl if b['t'] != 'drop']
         if cfg.get('loose_verse'):   # Hindi lines caught at the top of a verse block go back to prose
             nb_ = []
             for blk in bl:
@@ -532,11 +573,11 @@ NS_CH = [(1, 'प्रथमोऽध्यायः', 39, 'अज्ञान-
          (3, 'तृतीयोऽध्यायः', 249, 'तत्त्वमसि-वाक्यार्थ विचार'), (4, 'चतुर्थोऽध्यायः', 400, 'उपसंहार')]
 CFG['naishkarmya'] = dict(id='naishkarmya', title='नैष्कर्म्यसिद्धिः', roman='Naiṣkarmya Siddhi', author='श्रीमत्सुरेश्वराचार्य',
                           byline='श्रीमत्सुरेश्वराचार्यकृत, श्रीचित्सुखाचार्यकृत भावतत्त्वप्रकाशिका सहित', commentator='श्री स्वामी प्रज्ञानानन्द सरस्वती (सानुवाद सम्पादन, श्री स्वामी महेशानन्द गिरि जी के निर्देशानुसार)',
-                          pages=lambda: pickle.load(open(f'{NB}/naish_ocr.pkl', 'rb')), header_y=182, end=459, kind='granth',
+                          pages=lambda: pickle.load(open(f'{NB}/naish_ocr.pkl', 'rb')), header_y=182, end=464, kind='granth',
                           sections=lambda P: [{'id': 'bhumika', 'title': 'भूमिका', 'start': 3, 'group': 'front'},
                                               {'id': 'prakkathan', 'title': 'प्राक्कथन', 'start': 12, 'group': 'front'}] +
                                              [{'id': f'a{n}', 'num': n, 'title': t, 'start': a, 'group': 'main', 'maxn': mx} for (n, t, a, sub), mx in zip(NS_CH, [100, 119, 126, 77])],
-                          skip=list(range(17, 39)), sec_label='अध्याय', sec_abbr='अ.', groups={'front': 'प्रारम्भिक', 'main': 'अध्याय'},
+                          skip=list(range(17, 39)), verse_fix=True, loose_verse=True, trim_verse=True, sec_label='अध्याय', sec_abbr='अ.', groups={'front': 'प्रारम्भिक', 'main': 'अध्याय'},
                           extra=[{'title': 'मुखपृष्ठ', 'page': 1}, {'title': 'विषयानुक्रमणिका', 'page': 17}])
 
 

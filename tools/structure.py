@@ -243,6 +243,8 @@ def number_slokas_lis(blocks, maxn, max_step=15, start_after=0, relaxed=None):
         vals = [b['n']]
         if b['n'] > maxn and b['n'] >= 10:
             vals.append(b['n'] // 10)
+        if b['n'] > maxn and b['n'] >= 100:          # stray middle digit: ७९२ → ७२
+            vals.append((b['n'] // 100) * 10 + b['n'] % 10)
         for v in vals:
             if start_after < v <= maxn:
                 cands.append((i, v))
@@ -278,6 +280,8 @@ def number_slokas_lis(blocks, maxn, max_step=15, start_after=0, relaxed=None):
         if relaxed and len(cand) != gap:   # also single-line blocks that end in a (misread) verse number; never Hindi
             cand = [i for i in range(a_ + 1, b_) if blocks[i]['t'] == 'v' and 's' not in blocks[i] and not relaxed.search(blocks[i]['x'])
                     and (blocks[i]['x'].count('\n') >= 1 or VNUM.search(blocks[i]['x']))]
+        if a_ == -1 and relaxed:   # before the first numbered verse: an unnumbered verse is likely a maṅgala, not verse 1
+            cand = [i for i in cand if VNUM.search(blocks[i]['x'])]
         if len(cand) == gap:
             for kk, i in enumerate(cand):
                 blocks[i]['n'] = na + 1 + kk; blocks[i]['s'] = 1; chosen[i] = na + 1 + kk
