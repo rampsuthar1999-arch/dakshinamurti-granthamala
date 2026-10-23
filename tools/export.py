@@ -20,12 +20,14 @@ for (sid, num, title, group, a, b), blocks in allsec:
     for i, bl in enumerate(blocks):
         t = bl['t']
         x = fix(bl['x'])
-        if t == 'v' and 'प्रकरण' in x and ('पूर्ण' in x or 'समाप्त' in x) and '॥' not in x[-6:]:
+        if len(re.findall(r'[\u0905-\u0939]', x)) < 4 and t != 'h':
+            continue
+        if t == 'v' and not bl.get('s') and re.search(r'समाप्त|सम्पूर्ण|पूर्ण हुआ', x) and len(x) < 160:
             t = 'e'
         row = [t, bl['pg'], x]
         if bl.get('s'):
             row.append(bl['n'])
-            slokas.append([num, bl['n'], i, bl['pg'], x.split('\n')[0][:80]])
+            slokas.append([num, bl['n'], len(rows), bl['pg'], x.split('\n')[0][:80]])
         elif bl.get('c'):
             row.append(0)
         if bl.get('c'):
