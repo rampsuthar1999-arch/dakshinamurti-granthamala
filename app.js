@@ -46,7 +46,7 @@ const firstSec = book => book.firstSection || book.sections[0].id;
 const fold = s => normMap(roman2dev(String(s).toLowerCase()), true).replace(/\s+/g, '');
 function parseRef(q, lib, defBook) {
   const t = String(q).trim().replace(/[०-९]/g, d => DEV.indexOf(d));
-  const m = t.match(/^(.*?)[\s,:]*(\d{1,2})\s*[.:,/\s]\s*(\d{1,3})\s*$/);
+  const m = t.match(/^(.*?)[\s,:]*(\d{1,3})\s*[.:,/\s]\s*(\d{1,4})\s*$/);
   if (!m) {
     const g = t.match(/^(.*?)[\s,:]*(\d{1,4})\s*$/);
     if (!g) return null;

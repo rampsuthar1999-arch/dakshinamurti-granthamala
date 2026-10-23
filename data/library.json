@@ -125,21 +125,51 @@
  },
  {
   "id": "shivananda",
-  "soon": true,
   "kind": "granth",
   "title": "शिवानन्दलहरी",
   "titleRoman": "Śivānanda Laharī",
-  "mark": "शि",
-  "note": "शीघ्र उपलब्ध"
+  "author": "श्रीमद्भगवत्पादाचार्य (आदि शंकराचार्य)",
+  "byline": "श्रीमद्भगवत्पादाचार्यविरचित, हिन्दी अनुवाद तथा संस्कृत टीका सहित",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/shivananda/1.webp",
+  "pages": 362,
+  "slokas": 80,
+  "sections": 96,
+  "secLabel": "श्लोक",
+  "aliases": [
+   "शिवानन्दलहरी",
+   "शिवानंदलहरी",
+   "शिवानन्द",
+   "shivanandalahari",
+   "shivananda",
+   "sl"
+  ],
+  "globalNumbers": true
  },
  {
   "id": "mahimna",
-  "soon": true,
   "kind": "granth",
   "title": "श्रीशिवमहिम्नःस्तोत्रम्",
   "titleRoman": "Śiva Mahimnaḥ Stotram",
-  "mark": "म",
-  "note": "शीघ्र उपलब्ध"
+  "author": "श्रीपुष्पदन्ताचार्य",
+  "byline": "श्रीपुष्पदन्ताचार्यप्रणीत, श्लोकशः व्याख्या सहित",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/mahimna/1.webp",
+  "pages": 233,
+  "slokas": 32,
+  "sections": 40,
+  "secLabel": "श्लोक",
+  "aliases": [
+   "शिवमहिम्नःस्तोत्र",
+   "महिम्न",
+   "महिम्नस्तोत्र",
+   "mahimna",
+   "shivamahimna",
+   "mahimnah"
+  ],
+  "globalNumbers": true
  },
  {
   "id": "kaivalya",

@@ -18,7 +18,18 @@ All credit and rights belong to Shri Dakshinamurti Math. This is a non-commercia
 | अनुभूतिप्रकाशः (Anubhūti Prakāśa) — श्रीमद्विद्यारण्यस्वामी, verse commentary on 12 Upaniṣads | ✅ 20 adhyāyas · 2,791 ślokas · 1,826 pages |
 | श्रीकृष्ण-सन्देश (Śrī Kṛṣṇa Sandeśa) — commentary on the Bhagavad Gītā | ✅ 18 adhyāyas · 668 of 700 ślokas indexed · 1,673 pages |
 
-All commentaries are by Swami Maheshananda Giri Ji Maharaj.
+| बोधसारः (Bodhasāra) — श्रीमदाचार्यनरहरि, दीप्ति टीका | ✅ 61 prakaraṇas · 1,335 verses (running numbers) |
+| नैष्कर्म्यसिद्धिः (Naiṣkarmya Siddhi) — श्रीमत्सुरेश्वराचार्य, भावतत्त्वप्रकाशिका | ✅ 4 adhyāyas · OCR |
+| शिवानन्दलहरी (Śivānanda Laharī) — श्रीमद्भगवत्पादाचार्य | ✅ 100 ślokas with Hindi commentary + Sanskrit ṭīkā · OCR |
+| श्रीशिवमहिम्नःस्तोत्रम् (Śiva Mahimnaḥ Stotram) — श्रीपुष्पदन्ताचार्य | ✅ śloka-wise commentary · OCR |
+| कैवल्योपनिषद् (Kaivalya Upaniṣad) | ✅ 116 kathās · OCR |
+| दहरविद्या (Dahara Vidyā) | ✅ 17 pravachanas |
+| श्वेतकेतुविद्या (Śvetaketu Vidyā) | ✅ 51 pravachanas |
+| चिदानन्दलहरी (Cidānanda Laharī) | ✅ 58 pravachanas + 2 appendices |
+| श्रीपुरुषोत्तमयोग (Puruṣottama Yoga) | ✅ 20 pravachanas |
+| शिवसंकल्पसूक्त (Śiva Saṅkalpa Sūkta) | ✅ 62 topics |
+
+Commentaries and discourses are by Swami Maheshananda Giri Ji Maharaj, except where noted (Bodhasāra's Dīpti ṭīkā by Ācārya Divākara; Naiṣkarmya Siddhi edited and translated by Swami Prajñānānanda Sarasvatī under his direction).
 
 ## Features
 
@@ -35,6 +46,7 @@ All commentaries are by Swami Maheshananda Giri Ji Maharaj.
 
 - **Pañcadaśī:** from the PDF's existing OCR layer, so there are errors, especially in Sanskrit verses and some vowel signs (है/हे, ं/ँ).
 - **Anubhūti Prakāśa:** converted from the Kruti-Dev-family legacy fonts, so it is very close to the printed text.
+- **Books marked OCR** (Naiṣkarmya Siddhi, Śivānanda Laharī, Śiva Mahimnaḥ Stotram, Kaivalya Upaniṣad) were read from page images with Tesseract, so expect more errors there. The other new books were converted from legacy fonts (Narad/Shiva, Chandini, NewDelhi, Kundli, Walkman-Chanakya).
 - **Śrī Kṛṣṇa Sandesh:** chapters 2 and 10–18 were converted from legacy fonts (including pages whose font codes were shifted). Chapter 1, chapters 3–9 and the front matter were OCR'd with Tesseract, so expect more errors there.
 Corrections are welcome: tap any paragraph and choose **त्रुटि** (error).
 

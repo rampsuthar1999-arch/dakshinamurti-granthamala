@@ -45,7 +45,7 @@ def fix_text(t, cfg):
 
 
 # ---------------------------------------------------------------- verse marking (indented-short / tall lines with ॥N॥)
-def mark_verses(lines, header_y):
+def mark_verses(lines, header_y, wmax=0.85):
     ls = sorted(lines, key=lambda l: (l[1], l[0]))
     body = [l for l in ls if l[1] > header_y]
     if not body:
@@ -58,13 +58,13 @@ def mark_verses(lines, header_y):
     marked = set()
     for i, l in enumerate(body):
         dx = l[0] - base
-        if not (VNUM.search(l[4].strip()) and 8 <= dx <= 120 and ((l[2] - l[0]) < width * 0.85 or tall(l))):
+        if not (VNUM.search(l[4].strip()) and 8 <= dx <= 120 and ((l[2] - l[0]) < width * wmax or tall(l))):
             continue
         marked.add(i)
         j = i - 1
         while j >= 0 and i - j <= 6:
             p = body[j]; pdx = p[0] - base
-            if not (8 <= pdx <= 120 and ((p[2] - p[0]) < width * 0.85 or tall(p))):
+            if not (8 <= pdx <= 120 and ((p[2] - p[0]) < width * wmax or tall(p))):
                 break
             if VNUM.search(p[4].strip()) or re.search(r'[—\-:?]\s*$', p[4].strip()):
                 break
@@ -132,7 +132,7 @@ def build(cfg):
                     GLOB[(pn, dnum(m.group(1)))] = dnum(m.group(2))
     P = [[[l[0], l[1], l[2], l[3], fix_text(l[4], cfg)] for l in pg] for pg in P]
     hy = cfg['header_y']
-    pages = [mark_verses([list(l) for l in pg], hy) for pg in P]
+    pages = [mark_verses([list(l) for l in pg], hy, cfg.get('verse_w', 0.85)) for pg in P]
     labels = page_labels(pages, hy, N) if not cfg.get('offset_labels') else [max(0, p - cfg['offset_labels']) for p in range(1, N + 1)]
     secs = cfg['sections'](P)
     os.makedirs(f'{OUT}/data/{bid}', exist_ok=True)
@@ -161,11 +161,17 @@ def build(cfg):
             run_max = max(found + [run_max])
         elif cfg.get('one_per_section'):
             found = []
+            nxt = next((x.get('num') for x in secs[k + 1:] if x.get('num')), None)
+            hi = (nxt - 1) if nxt and s.get('num') else s.get('num')
             for blk in bl:
-                if blk['t'] == 'v' and blk.get('n') == s.get('num') and not found:
+                if blk['t'] == 'v' and s.get('num') and s['num'] <= (blk.get('n') or 0) <= hi and blk['n'] not in found:
                     blk['s'] = 1; found.append(blk['n'])
                 elif blk['t'] == 'v':
                     blk.pop('n', None); blk.pop('s', None)
+            if s.get('num') and not found:   # OCR damaged the number: the section opens with its verse
+                for blk in bl:
+                    if blk['t'] == 'v' and blk['x'].count('\n') >= 1:
+                        blk['n'] = s['num']; blk['s'] = 1; found.append(s['num']); break
         elif s.get('maxn'):
             found = number_slokas_lis(bl, s['maxn'])
         else:
@@ -320,7 +326,7 @@ CFG['naishkarmya'] = dict(id='naishkarmya', title='नैष्कर्म्�
                           extra=[{'title': 'मुखपृष्ठ', 'page': 1}, {'title': 'विषयानुक्रमणिका', 'page': 17}])
 
 
-def heading_secs(P, pat, label, first_page=1, front=None):
+def heading_secs(P, pat, label, first_page=1, front=None, extra=None):
     """sections from centred title lines that match pat exactly (number in group 1)."""
     secs = [{'id': 'front', 'title': front[0], 'start': front[1], 'group': 'front'}] if front else []
     last = 0
@@ -333,15 +339,66 @@ def heading_secs(P, pat, label, first_page=1, front=None):
                     secs.append({'id': f'n{n}', 'num': n, 'title': f'{label} {str(n).translate(D2)}', 'start': i, 'group': 'main'})
                     last = n
                 break
+    for n, pg in (extra or {}).items():
+        if not any(x.get('num') == n for x in secs):
+            secs.append({'id': f'n{n}', 'num': n, 'title': f'{label} {str(n).translate(D2)}', 'start': pg, 'group': 'main'})
+    secs.sort(key=lambda x: (x['start'], x.get('num', 0)))
     return secs
 
 
 CFG['mahimna'] = dict(id='mahimna', title='श्रीशिवमहिम्नःस्तोत्रम्', roman='Śiva Mahimnaḥ Stotram', author='श्रीपुष्पदन्ताचार्य',
                       byline='श्रीपुष्पदन्ताचार्यप्रणीत, श्लोकशः व्याख्या सहित', kind='granth', one_per_section=True,
                       pages=lambda: pickle.load(open(f'{NB}/mahimna_ocr.pkl', 'rb')), header_y=60, end=233, drop_start=drop_title,
-                      sections=lambda P: heading_secs(P, r'^श\S*लोक\s*[-–]\s*([०-९]{1,2})$', 'श्लोक', 7, front=('भूमिका', 3)),
+                      sections=lambda P: heading_secs(P, r'^श\S*लोक\s*[-–]\s*([०-९]{1,2})$', 'श्लोक', 7, front=('भूमिका', 3),
+                                                     extra={12: 89, 13: 93, 22: 158, 31: 214, 37: 221, 40: 224}),
                       sec_label='श्लोक', sec_abbr='श्लो.', groups={'front': 'प्रारम्भिक', 'main': 'श्लोक'},
                       extra=[{'title': 'मुखपृष्ठ', 'page': 1}])
+
+
+def verse_page_secs(P, a, b, maxn, label):
+    """one section per verse, starting on the page where the verse (॥N॥) appears; LIS over all candidates."""
+    c = []
+    for pn in range(a, b + 1):
+        for l in sorted(P[pn - 1], key=lambda l: (l[1], l[0])):
+            m = re.search(r'[।॥]\s*([०-९]{1,3})\s*[।॥]\s*$', l[4])
+            if m:
+                n = dnum(m.group(1))
+                for v in [n] + ([n // 10] if n > maxn else []):
+                    if 1 <= v <= maxn:
+                        c.append((pn, v))
+    best = []
+    for k, (pg, v) in enumerate(c):
+        bl, bp = (1 if v <= 10 else 0), -1
+        for j in range(k):
+            if c[j][1] < v <= c[j][1] + 6 and best[j][0] > 0 and best[j][0] + 1 > bl:
+                bl, bp = best[j][0] + 1, j
+        best.append((bl, bp))
+    k = max(range(len(best)), key=lambda i: best[i][0]); seq = []
+    while k != -1 and best[k][0] > 0:
+        seq.append(c[k]); k = best[k][1]
+    first = {}
+    for pg, v in reversed(seq):
+        first.setdefault(v, pg)
+    secs, used = [], set()
+    for v in sorted(first):
+        pg = first[v]
+        if pg in used:
+            secs[-1]['title'] = re.sub(r'(\S+)(–\S+)?$', lambda m: m.group(1) + '–' + str(v).translate(D2), secs[-1]['title'])
+            continue
+        used.add(pg)
+        secs.append({'id': f'v{v}', 'num': v, 'title': f'{label} {str(v).translate(D2)}', 'start': pg, 'group': 'main'})
+    return secs
+
+
+CFG['shivananda'] = dict(id='shivananda', title='शिवानन्दलहरी', roman='Śivānanda Laharī', author='श्रीमद्भगवत्पादाचार्य (आदि शंकराचार्य)',
+                         byline='श्रीमद्भगवत्पादाचार्यविरचित, हिन्दी अनुवाद तथा संस्कृत टीका सहित', kind='granth', one_per_section=True, verse_w=0.97,
+                         pages=lambda: pickle.load(open(f'{NB}/shivananda_ocr.pkl', 'rb')), header_y=66, end=361, drop_start=drop_title,
+                         sections=lambda P: [{'id': 'bhumika', 'title': 'भूमिका', 'start': 7, 'group': 'front'},
+                                             {'id': 'avatarani', 'title': 'अवतरणिका', 'start': 29, 'group': 'front'}] +
+                                            verse_page_secs(P, 35, 290, 100, 'श्लोक') +
+                                            [{'id': 'tika', 'title': 'शिवानन्दलहरीव्याख्या (संस्कृत टीका)', 'start': 291, 'group': 'tika'}],
+                         sec_label='श्लोक', sec_abbr='श्लो.', groups={'front': 'प्रारम्भिक', 'main': 'श्लोक एवं हिन्दी व्याख्या', 'tika': 'संस्कृत टीका'},
+                         extra=[{'title': 'मुखपृष्ठ', 'page': 1}, {'title': 'विषयसूची', 'page': 3}, {'title': 'श्लोक सूची', 'page': 362}])
 
 
 if __name__ == '__main__':

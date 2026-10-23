@@ -1,6 +1,6 @@
 // Offline support: app shell is network-first; book data and page scans are cache-first
 // (they are cached as you read, so previously opened prakaraṇas/pages work offline).
-const SHELL = 'dg-shell-v2', DATA = 'dg-data-v1';
+const SHELL = 'dg-shell-v3', DATA = 'dg-data-v1';
 const SHELL_FILES = ['./', 'index.html', 'app.js', 'style.css', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.webmanifest', 'data/library.json'];
 
 self.addEventListener('install', e => {
