@@ -55,7 +55,9 @@ def _seq_replace(s):
     return _RX.sub(lambda m: _MAP[m.group(0)], s)
 
 
-def convert(s):
+def convert(s, tra_short=False):
+    if tra_short:  # Narad/Shiva (Kṛṣṇa Sandesh): '=k' is त्र, '=kk' is त्रा
+        s = s.replace('=kk', '\x01').replace('=k', '=').replace('\x01', '=k')
     s = s.replace('=kk', '=k').replace('f=k', 'f=').replace('=kh', '=h')
     s = s.replace('±', 'Zं').replace('Æ', 'र्f')
     s = _seq_replace(s)
@@ -74,6 +76,8 @@ def convert(s):
     s = re.sub(r'ा(ं?)ै', r'ौ\1', s)
     s = s.replace('।।', '॥').replace(' ः', ':').replace('्र्र', '्र').replace('µ', '—')
     s = s.translate(str.maketrans('0123456789', '०१२३४५६७८९'))
+    for _ in range(2):
+        s = re.sub(r'([०-९])ॉ', r'\1०', s)  # Narad/Shiva draw zero with the ‚ glyph
     return s
 
 
