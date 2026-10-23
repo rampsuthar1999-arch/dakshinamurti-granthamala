@@ -5,8 +5,63 @@
   "titleRoman": "Pañcadaśī",
   "author": "श्रीमद्विद्यारण्यस्वामी",
   "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
   "cover": "pages/pancadashi/1.webp",
   "pages": 1530,
-  "slokas": 1567
+  "slokas": 1567,
+  "sections": 15,
+  "aliases": [
+   "पञ्चदशी",
+   "पंचदशी",
+   "पन्चदशी",
+   "panchadashi",
+   "pancadasi",
+   "panchadasi",
+   "pd"
+  ]
+ },
+ {
+  "id": "anubhuti",
+  "title": "अनुभूतिप्रकाशः",
+  "titleRoman": "Anubhūti Prakāśa",
+  "author": "श्रीमद्विद्यारण्यस्वामी",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "द्वादश उपनिषदों की श्लोकबद्ध व्याख्या",
+  "cover": "pages/anubhuti/1.webp",
+  "pages": 1826,
+  "slokas": 2791,
+  "sections": 20,
+  "aliases": [
+   "अनुभूतिप्रकाश",
+   "अनुभूति",
+   "anubhuti",
+   "anubhutiprakash",
+   "anubhooti",
+   "ap"
+  ]
+ },
+ {
+  "id": "krishna-sandesh",
+  "title": "श्रीकृष्ण-सन्देश",
+  "titleRoman": "Śrī Kṛṣṇa Sandeśa",
+  "author": "श्रीमद्भगवद्गीता",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/krishna-sandesh/1.webp",
+  "pages": 1673,
+  "slokas": 668,
+  "sections": 18,
+  "aliases": [
+   "श्रीकृष्णसन्देश",
+   "कृष्णसन्देश",
+   "कृष्ण",
+   "गीता",
+   "भगवद्गीता",
+   "krishna",
+   "sandesh",
+   "gita",
+   "ks",
+   "bg"
+  ]
  }
 ]

@@ -151,7 +151,7 @@ def split_verses(blocks):
     return out
 
 
-def number_slokas(blocks, window=8):
+def number_slokas(blocks, window=8, gapfill=False):
     """mark the main śloka sequence (numbers increasing from 1)."""
     expected, found = 1, []
     for b in blocks:
@@ -161,7 +161,18 @@ def number_slokas(blocks, window=8):
             b['s'] = 1; found.append(b['n']); expected = b['n'] + 1
         else:
             del b['n']
-    return found
+    if gapfill:
+        main = [i for i, b in enumerate(blocks) if b.get('s')]
+        bounds = [(-1, 0)] + [(i, blocks[i]['n']) for i in main]
+        for (a_, na), (b_, nb) in zip(bounds, bounds[1:]):
+            gap = nb - na - 1
+            if gap <= 0:
+                continue
+            cand = [i for i in range(a_ + 1, b_) if blocks[i]['t'] == 'v' and 'n' not in blocks[i] and blocks[i]['x'].count('\n') >= 1]
+            if len(cand) == gap:
+                for k, i in enumerate(cand):
+                    blocks[i]['n'] = na + 1 + k; blocks[i]['s'] = 1; found.append(na + 1 + k)
+    return sorted(found)
 
 
 def page_labels(pages, header_y, npages):
@@ -207,6 +218,7 @@ def page_labels(pages, header_y, npages):
 def polish(t, x):
     """final text clean-ups shared by all books."""
     x = re.sub(r"([’'”\"])्", r"्\1", x)
+    x = re.sub(r'[\x00-\x09\x0b-\x1f\x7f-\x9f]', '', x)
     if t == 'v':
         lines = x.split('\n')
         out = []

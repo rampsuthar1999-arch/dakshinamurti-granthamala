@@ -5,7 +5,7 @@ META = {
     'anubhuti': {'aliases': ['अनुभूतिप्रकाश', 'अनुभूति', 'anubhuti', 'anubhutiprakash', 'anubhooti', 'ap'], 'mark': 'अ',
                  'subtitle': 'द्वादश उपनिषदों की श्लोकबद्ध व्याख्या'},
     'krishna-sandesh': {'aliases': ['श्रीकृष्णसन्देश', 'कृष्णसन्देश', 'कृष्ण', 'गीता', 'भगवद्गीता', 'krishna', 'sandesh', 'gita', 'ks', 'bg'], 'mark': 'कृ',
-                        'subtitle': 'श्रीमद्भगवद्गीता व्याख्या'},
+                        'subtitle': ''},
 }
 ORDER = ['pancadashi', 'anubhuti', 'krishna-sandesh']
 lib = []

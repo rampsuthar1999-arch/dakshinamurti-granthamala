@@ -284,7 +284,7 @@ async function viewBook(id) {
       <div>
         <div class="rom" style="color:var(--muted);font-size:13px;letter-spacing:.05em">${esc(book.titleRoman)} · ${esc(book.series)}</div>
         <h1>${esc(book.title)}</h1>
-        <p class="by">${esc(book.author)} विरचित<br>व्याख्याता: ${esc(book.commentator)}<br><span style="color:var(--muted)">${esc(book.publisher)}</span></p>
+        <p class="by">${esc(book.byline || book.author + ' विरचित')}<br>व्याख्याता: ${esc(book.commentator)}<br><span style="color:var(--muted)">${esc(book.publisher)}</span></p>
       </div>
     </div>
     <div class="actions">
@@ -368,7 +368,7 @@ function renderBlocks(book, sec) {
     const mk = bm.has(i) ? ' marked' : '';
     if (t === 'v') {
       const main = n ? ' s' : ' q';
-      html += `<div class="blk v${main}${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${n ? `<span class="vnum">${abbr(book)} ${toDev(sec.num)} · श्लोक ${toDev(n)}</span>` : ''}${esc(x)}</div>`;
+      html += `<div class="blk v${main}${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${n ? `<span class="vnum">${abbr(book)} ${toDev(sec.num)} · श्लोक ${toDev(n)}</span>` : ''}${esc(x.replace(/\s+([॥।]?\s*[०-९]+\s*॥)/g, '\u00a0$1').replace(/([॥।])\s+([०-९])/g, '$1\u00a0$2'))}</div>`;
     } else if (t === 'sh') {
       html += `<h3 class="blk sh${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${esc(x)}</h3>`;
     } else {

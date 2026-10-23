@@ -14,8 +14,22 @@ OCR_DIR = '/home/claude/ks/ocr'
 SCALE = 300 / 72.0
 
 
+_OD = {'0': '०', '1': '१', '2': '२', '3': '३', '4': '४', '5': '५', '6': '६', '7': '७', '8': '८', '9': '१', 'पू': '५', 'प': '५', 'र': ''}
+
+
+def _numfix(m):
+    inner = m.group(2)
+    for a, b in _OD.items():
+        inner = inner.replace(a, b)
+    inner = re.sub(r'[^०-९]', '', inner)
+    return f'{m.group(1)}{inner}॥' if inner else m.group(0)
+
+
 def ocr_fix(t):
-    t = t.replace('|', '।').replace('।।', '॥').replace('॥।', '॥').replace('।॥', '॥')
+    t = t.replace('|', '।')
+    t = re.sub(r'([।॥])\s*[`~^\'".,:;*_\-]+\s*$', r'\1', t)
+    # verse numbers: ॥१५॥ often comes out as ॥9पू॥, ।।3।। etc.
+    t = re.sub(r'([।॥]{1,2})\s*((?:[०-९0-9]|पू|प|र){1,4})\s*[।॥]{1,2}\s*$', _numfix, t).replace('।।', '॥').replace('॥।', '॥').replace('।॥', '॥')
     t = re.sub(r'\s+([।॥,?!])', r'\1', t)
     return t
 
@@ -125,10 +139,10 @@ def build(OUT, starts):
         secs.append((f'g{num}', num, f'{ORD[num]} अध्याय : {GITA[num][0]}', 'k1' if num <= 6 else ('k2' if num <= 12 else 'k3'), a, b, GITA[num][0]))
     sections, slokas = [], []
     for sid, num, title, group, a, b, yoga in secs:
-        skip = set(range(1116, 1120))
+        skip = set(range(1116, 1120)) | set(range(575, 579))
         bl = split_verses(parse_section(pages, a, b, title, header_y=64, para_dx=(8, 40), verse_dx=150, full_w=250,
                                        drop_start=drop_start if num else None, skip_pages=skip))
-        found = number_slokas(bl) if num else []
+        found = number_slokas(bl, gapfill=True) if num else []
         rows = []
         for blk in bl:
             x, t = blk['x'], blk['t']
@@ -148,7 +162,7 @@ def build(OUT, starts):
             rows.append(row)
         meta = {'id': sid, 'num': num, 'title': title, 'group': group, 'start': a, 'end': b}
         if num:
-            meta['sub'] = f'{ORD[num]} अध्याय · {GITA[num][1]} श्लोक'
+            meta['sub'] = f'{ORD[num]} अध्याय · ' + str(GITA[num][1]).translate(str.maketrans('0123456789', '०१२३४५६७८९')) + ' श्लोक'
         json.dump({**meta, 'blocks': rows}, open(f'{OUT}/data/{BID}/{sid}.json', 'w'), ensure_ascii=False, separators=(',', ':'))
         meta['slokas'] = len(found)
         sections.append(meta)
@@ -157,7 +171,7 @@ def build(OUT, starts):
             print(sid, a, b, 'slokas', len(set(found)), '/', exp, 'missing', sorted(set(range(1, exp + 1)) - set(found))[:15])
     book = {
         'id': BID, 'title': 'श्रीकृष्ण-सन्देश', 'titleRoman': 'Śrī Kṛṣṇa Sandeśa',
-        'author': 'श्रीमद्भगवद्गीता', 'commentator': 'श्री १०८ स्वामी महेशानन्द गिरि जी महाराज',
+        'author': 'श्रीमद्भगवद्गीता', 'byline': 'श्रीमद्भगवद्गीता की विस्तृत व्याख्या', 'commentator': 'श्री १०८ स्वामी महेशानन्द गिरि जी महाराज',
         'publisher': 'श्रीदक्षिणामूर्ति मठ प्रकाशन, वाराणसी', 'series': 'श्रीदक्षिणामूर्तिसंस्कृतग्रन्थमाला – ५८',
         'pages': N, 'imgDir': f'pages/{BID}', 'labels': labels, 'firstSection': 'g1',
         'groups': {'front': 'प्रारम्भिक', 'k1': 'प्रथम षट्क · अध्याय १–६', 'k2': 'द्वितीय षट्क · अध्याय ७–१२', 'k3': 'तृतीय षट्क · अध्याय १३–१८'},

@@ -14,9 +14,11 @@ All credit and rights belong to Shri Dakshinamurti Math. This is a non-commercia
 
 | Book | Status |
 |---|---|
-| पञ्चदशी (Pañcadaśī) — श्रीमद्विद्यारण्यस्वामी, व्याख्या: स्वामी महेशानन्द गिरि | ✅ Available: 15 prakaraṇas, 1,567 ślokas, 1,530 pages |
-| अनुभूतिप्रकाश (Anubhūti Prakāśa) | Planned |
-| श्रीकृष्ण-सन्देश (Śrī Kṛṣṇa Sandeśa) | Planned |
+| पञ्चदशी (Pañcadaśī) — श्रीमद्विद्यारण्यस्वामी | ✅ 15 prakaraṇas · 1,567 ślokas · 1,530 pages |
+| अनुभूतिप्रकाशः (Anubhūti Prakāśa) — श्रीमद्विद्यारण्यस्वामी, verse commentary on 12 Upaniṣads | ✅ 20 adhyāyas · 2,791 ślokas · 1,826 pages |
+| श्रीकृष्ण-सन्देश (Śrī Kṛṣṇa Sandeśa) — commentary on the Bhagavad Gītā | ✅ 18 adhyāyas · 668 of 700 ślokas indexed · 1,673 pages |
+
+All commentaries are by Swami Maheshananda Giri Ji Maharaj.
 
 ## Features
 
@@ -24,12 +26,16 @@ All credit and rights belong to Shri Dakshinamurti Math. This is a non-commercia
 - Original scanned page for every page, side by side on wide screens or full-screen with swipe and zoom
 - Full-text search over the whole book in Devanagari or Roman (`kutastha`, `brahmAnanda`), with a lenient mode that tolerates common OCR errors
 - Śloka index: find a verse by its opening words or by reference (e.g. `6.12`)
+- Jump straight to any verse from the home page: `पञ्चदशी ९.२`, `anubhuti 3.14`, `gita 2.47`, or link to `#/b/<book>/v/9.2`
+- Installable as a phone app (PWA), with a button to save a whole book (text, optionally scans) for offline reading
 - Bookmarks with notes, remembers where you stopped, font size, and light/sepia/dark themes
 - Every paragraph or verse can be copied, linked, or reported as a text error (opens a GitHub issue)
 
 ## Accuracy
 
-The text was extracted automatically from the printed book's OCR layer, so there are errors, especially in Sanskrit verses and in some vowel signs (है/हे, ं/ँ).
+- **Pañcadaśī:** from the PDF's existing OCR layer, so there are errors, especially in Sanskrit verses and some vowel signs (है/हे, ं/ँ).
+- **Anubhūti Prakāśa:** converted from the Kruti-Dev-family legacy fonts, so it is very close to the printed text.
+- **Śrī Kṛṣṇa Sandesh:** chapters 2 and 10–18 were converted from legacy fonts (including pages whose font codes were shifted). Chapter 1, chapters 3–9 and the front matter were OCR'd with Tesseract, so expect more errors there.
 Corrections are welcome: tap any paragraph and choose **त्रुटि** (error).
 
 ## Structure
