@@ -113,11 +113,24 @@ def apply_ref(P, cfg):
             for k, l in enumerate(P[pn - 1]):
                 if l[1] > 25:
                     lines.append(((pn, k), l[4]))
-        ref = {int(k.split('.')[1]): v for k, v in R.items() if k.split('.')[0] == str(c)}
+        full = {int(k.split('.')[1]): [x.replace('\u200d', '') for x in v] for k, v in R.items() if k.split('.')[0] == str(c)}
+        ref = {n: v[-2:] for n, v in full.items()}          # match on the last two lines (long metres have four)
         seq = kmatch.choose(kmatch.candidates(lines, ref))
         stats[c] = (len(seq), len(ref))
         for (pn, k), n, sc, p1 in seq:
             h1, h2 = (x.rstrip(' ।॥') for x in ref[n])
+            extra = [x.rstrip(' ।॥') for x in full[n][:-2]]
+            if extra:   # earlier lines of a long-metre verse: replace the OCR lines just above when they match
+                top = p1 or (pn, k)
+                pgx = P[top[0] - 1]
+                for e_i, e in enumerate(reversed(extra)):
+                    cands_ = [(kmatch.sim(kmatch.norm(pgx[q][4]), kmatch.norm(e)), q) for q in range(max(0, top[1] - 3), top[1])]
+                    sc_, q = max(cands_) if cands_ else (0, None)
+                    if sc_ >= 0.45:
+                        pgx[q][4] = REFH + e
+                    else:
+                        y = pgx[top[1]][1] - 8 * (e_i + 1)
+                        pgx.append([pgx[top[1]][0], y, pgx[top[1]][2], y + 6, REFH + e])
             num = ''.join('०१२३४५६७८९'[int(d)] for d in str(n))
             pg = P[pn - 1]; l2 = pg[k]
             l2[4] = REFMARK + h2 + ' ॥ ' + num + '॥'
@@ -134,6 +147,43 @@ def apply_ref(P, cfg):
             P[pn - 1].sort(key=lambda l: (l[1], l[0]))
     print('reference verses placed:', stats)
     return P
+
+
+def ref_rebuild(bl, s, cfg):
+    """Blocks carrying a reference-matched verse: rebuild the verse from the reference text, keep surrounding
+    prose as prose, and drop reference half-lines that ended up in other blocks."""
+    sys.path.insert(0, '/home/claude/gs')
+    import kmatch
+    R = json.load(open(cfg['ref_karika']))
+    found, out = [], []
+    for blk in bl:
+        x = blk['x']
+        while True:
+            m = re.search(REFMARK + r'[^॥\n]*॥\s*([०-९]+)\s*॥', x)
+            if not m:
+                break
+            n = dnum(m.group(1))
+            key = f"{s['num']}.{n}"
+            pre, x = x[:m.start()], x[m.end():]
+            full = [l.replace('\u200d', '').strip().rstrip(' ।॥') for l in R.get(key, [])]
+            pre = re.sub(REFH + r'[^\n।॥]*[।॥]?', '', pre)
+            keep = [ln for ln in pre.split('\n') if not (full and max(kmatch.sim(kmatch.norm(ln), kmatch.norm(f)) for f in full) >= 0.45)]
+            pre = ' '.join(ln.strip() for ln in keep).strip()
+            if len(re.findall(r'[अ-ह]', pre)) >= 3:
+                out.append({**{k: v for k, v in blk.items() if k not in ('n', 's')}, 't': 'p' if blk['t'] == 'v' else blk['t'], 'x': pre})
+            if full and s.get('minn', 0) < n <= s['maxn'] and n not in found:
+                num = ''.join('०१२३४५६७८९'[int(d)] for d in str(n))
+                txt = '\n'.join(f + '।' for f in full[:-1]) + '\n' + full[-1] + '॥ ' + num + '॥'
+                out.append({'t': 'v', 'pg': blk['pg'], 'x': txt, 'n': n, 's': 1})
+                found.append(n)
+        x = re.sub(REFH + r'[^\n।॥]*[।॥]?', '', x).replace(REFMARK, '').replace(REFH, '').strip()
+        if len(re.findall(r'[अ-ह]', x)) >= 3 or (blk['t'] == 'h'):
+            nb = dict(blk); nb['x'] = x
+            if nb['t'] == 'v':
+                nb.pop('n', None); nb.pop('s', None)
+            out.append(nb)
+    bl[:] = out
+    return found
 
 
 # ---------------------------------------------------------------- verse marking (indented-short / tall lines with ॥N॥)
@@ -383,16 +433,7 @@ def build(cfg):
                     if blk['t'] == 'v' and blk['x'].count('\n') >= 1:
                         blk['n'] = s['num']; blk['s'] = 1; found.append(s['num']); break
         elif cfg.get('ref_karika') and s.get('maxn'):
-            found = []
-            for blk in bl:
-                if blk['t'] == 'v' and REFMARK in blk['x']:
-                    blk['x'] = blk['x'].replace(REFMARK, '').replace(REFH, '').replace(REFH, '')
-                    m = VNUM.search(blk['x'])
-                    if m and s.get('minn', 0) < dnum(m.group(1)) <= s['maxn']:
-                        blk['n'] = dnum(m.group(1)); blk['s'] = 1; found.append(blk['n']); continue
-                if blk['t'] == 'v':
-                    blk.pop('n', None); blk.pop('s', None)
-                blk['x'] = blk['x'].replace(REFMARK, '').replace(REFH, '')
+            found = ref_rebuild(bl, s, cfg)
         elif s.get('maxn'):
             found = number_slokas_lis(bl, s['maxn'], start_after=s.get('minn', 0), relaxed=HINDI2 if cfg.get('loose_verse') else None)
             if cfg.get('header_kw'):
@@ -576,8 +617,8 @@ CFG['naishkarmya'] = dict(id='naishkarmya', title='नैष्कर्म्�
                           pages=lambda: pickle.load(open(f'{NB}/naish_ocr.pkl', 'rb')), header_y=182, end=464, kind='granth',
                           sections=lambda P: [{'id': 'bhumika', 'title': 'भूमिका', 'start': 3, 'group': 'front'},
                                               {'id': 'prakkathan', 'title': 'प्राक्कथन', 'start': 12, 'group': 'front'}] +
-                                             [{'id': f'a{n}', 'num': n, 'title': t, 'start': a, 'group': 'main', 'maxn': mx} for (n, t, a, sub), mx in zip(NS_CH, [100, 119, 126, 77])],
-                          skip=list(range(17, 39)), verse_fix=True, loose_verse=True, trim_verse=True, sec_label='अध्याय', sec_abbr='अ.', groups={'front': 'प्रारम्भिक', 'main': 'अध्याय'},
+                                             [{'id': f'a{n}', 'num': n, 'title': t, 'start': a, 'group': 'main', 'maxn': mx} for (n, t, a, sub), mx in zip(NS_CH, [100, 119, 126, 78])],
+                          skip=list(range(17, 39)), verse_fix=True, loose_verse=True, trim_verse=True, ref_karika='/home/claude/ref/nref.json', ref_ranges={1: (39, 141), 2: (142, 248), 3: (249, 399), 4: (400, 464)}, sec_label='अध्याय', sec_abbr='अ.', groups={'front': 'प्रारम्भिक', 'main': 'अध्याय'},
                           extra=[{'title': 'मुखपृष्ठ', 'page': 1}, {'title': 'विषयानुक्रमणिका', 'page': 17}])
 
 

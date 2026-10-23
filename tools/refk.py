@@ -30,8 +30,17 @@ def parse(path):
     return out
 
 
+# reference typos where the printed book has the correct reading
+PATCHES = {(3, 1): ('उपासानाश्रितो', 'उपासनाश्रितो'), (4, 14): ('तैरूपवर्ण्यते', 'तैरुपवर्ण्यते'),
+           (4, 41): ('विपर्यासात्धर्मांस्तत्रैव', 'विपर्यासाद्धर्मांस्तत्रैव'), (4, 46): ('विपर्यते', 'विपर्यये'),
+           (4, 50): ('स्युराभासस्याविशेशतः', 'स्युराभासस्याविशेषतः'), (4, 67): ('नोच्यते', 'चोच्यते')}
+
 if __name__ == '__main__':
     R = parse(sys.argv[1])
+    for k, (a, b) in PATCHES.items():
+        hit = [i for i, l in enumerate(R[k]) if a in l]
+        assert hit, (k, a)
+        R[k][hit[0]] = R[k][hit[0]].replace(a, b)
     for c in (1, 2, 3, 4):
         ks = sorted(n for (cc, n) in R if cc == c); print(c, len(ks), ks[-1] if ks else None)
     json.dump({f'{c}.{n}': v for (c, n), v in R.items()}, open(sys.argv[2], 'w'), ensure_ascii=False, indent=0)
