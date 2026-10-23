@@ -65,6 +65,10 @@ def scan_normalise(lines, header_y):
 def fix_text(t, cfg):
     if cfg.get('scan'):
         t = scan_clean(t)
+    if cfg.get('vocab_correct'):
+        sys.path.insert(0, '/home/claude/gs')
+        from correct import correct_text
+        t = correct_text(t)
     t = re.sub(r'\s+([्ािीुूृेैोौंँ़])', r'\1', t)                     # stray space before a vowel sign / virama
     t = re.sub(r'(?<=[०-९])ण्(?=[०-९])', '.', t)                      # dates: २५ण्३ण्७६ → २५.३.७६
     if cfg.get('ddha_sha'):
@@ -75,7 +79,10 @@ def fix_text(t, cfg):
 
 
 # ---------------------------------------------------------------- verse marking (indented-short / tall lines with ॥N॥)
-def mark_verses(lines, header_y, wmax=0.85):
+HINDI = re.compile(r'(^|\s)(है|हैं|में|के|की|का|से|नहीं|क्या|को|यह|भी|और|तो|कि|हो|था|थे|गया|हुआ|कहते|जाता|होता|ने|पर|लिये|लिए|इस|उस|जो|वह|एक)(\s|$|[।,?!])')
+
+
+def mark_verses(lines, header_y, wmax=0.85, loose=False):
     ls = sorted(lines, key=lambda l: (l[1], l[0]))
     body = [l for l in ls if l[1] > header_y]
     if not body:
@@ -104,6 +111,19 @@ def mark_verses(lines, header_y, wmax=0.85):
             if 'उवाच' in p[4]:
                 break
             j -= 1
+    if loose:   # skewed scans: recognise verses by content (Sanskrit lines ending in ॥N॥), not by indentation
+        for i, l in enumerate(body):
+            t = l[4].strip()
+            if not VNUM.search(t) or (i not in marked and (HINDI.search(t) or len(t) > 90)):
+                continue
+            marked.add(i)
+            for j in range(i - 1, max(-1, i - 4), -1):
+                p = body[j][4].strip()
+                if VNUM.search(p) or HINDI.search(p) or len(p) > 90 or re.search(r'[—\-:?]$', p):
+                    break
+                marked.add(j)
+                if re.search(r'[।|]$', p) and i - j >= 1:
+                    break
     for i in marked:
         body[i][0] += 400
     return ls
@@ -162,7 +182,7 @@ def build(cfg):
                     GLOB[(pn, dnum(m.group(1)))] = dnum(m.group(2))
     P = [[[l[0], l[1], l[2], l[3], fix_text(l[4], cfg)] for l in pg] for pg in P]
     hy = cfg['header_y']
-    pages = [mark_verses([list(l) for l in pg if l[4]], hy, cfg.get('verse_w', 0.85)) for pg in P]
+    pages = [mark_verses([list(l) for l in pg if l[4]], hy, cfg.get('verse_w', 0.85), cfg.get('loose_verse', False)) for pg in P]
     if cfg.get('scan'):
         pages = [scan_normalise(pg, hy) for pg in pages]
     labels = page_labels(pages, hy, N) if not cfg.get('offset_labels') else [max(0, p - cfg['offset_labels']) for p in range(1, N + 1)]
@@ -227,7 +247,7 @@ def build(cfg):
                     if blk['t'] == 'v' and blk['x'].count('\n') >= 1:
                         blk['n'] = s['num']; blk['s'] = 1; found.append(s['num']); break
         elif s.get('maxn'):
-            found = number_slokas_lis(bl, s['maxn'])
+            found = number_slokas_lis(bl, s['maxn'], start_after=s.get('minn', 0))
             if cfg.get('header_kw'):
                 hdr = []
                 for pn in range(a, b + 1):
@@ -272,7 +292,7 @@ def build(cfg):
             row = [t, blk['pg'], x]
             if blk.get('s') and s.get('num'):
                 row.append(blk['n'])
-                slokas.append([s['num'], blk['n'], len(rows), blk['pg'], x.split('\n')[0][:80]])
+                slokas.append([s['num'], blk['n'], len(rows), blk['pg'], x.split('\n')[0][:80], s.get('id') or f's{k + 1}'])
             elif blk.get('c'):
                 row.append(0)
             if blk.get('c'):
@@ -491,11 +511,11 @@ GS_SECS = [  # (title, printed page, group, num, maxn)
     ('भूमिका', None, 'front', 0, 0),
     ('भाष्य मङ्गल', 1, 'p1', 0, 0), ('सम्बन्ध ग्रन्थ', 15, 'p1', 0, 0), ('प्रथम मन्त्र', 51, 'p1', 0, 0),
     ('द्वितीय मन्त्र', 60, 'p1', 0, 0), ('तृतीय मन्त्र', 80, 'p1', 0, 0), ('चतुर्थ मन्त्र', 118, 'p1', 0, 0),
-    ('पञ्चम मन्त्र', 135, 'p1', 0, 0), ('षष्ठ मन्त्र', 157, 'p1', 0, 0), ('प्रारम्भिक नौ कारिकाएँ (१–९)', 165, 'p1', 0, 0),
-    ('सप्तम मन्त्र', 244, 'p1', 0, 0), ('सप्तम मन्त्र पर कारिकाएँ (१०–१८)', 301, 'p1', 0, 0), ('अष्टम मन्त्र', 399, 'p1', 0, 0),
+    ('पञ्चम मन्त्र', 135, 'p1', 0, 0), ('षष्ठ मन्त्र', 157, 'p1', 0, 0), ('प्रारम्भिक नौ कारिकाएँ (१–९)', 165, 'p1', 1, 9),
+    ('सप्तम मन्त्र', 244, 'p1', 0, 0), ('सप्तम मन्त्र पर कारिकाएँ (१०–१८)', 301, 'p1', 1, 18), ('अष्टम मन्त्र', 399, 'p1', 0, 0),
     ('नवम मन्त्र', 410, 'p1', 0, 0), ('दशम मन्त्र', 417, 'p1', 0, 0), ('एकादश मन्त्र', 419, 'p1', 0, 0),
-    ('चार मन्त्रों पर कारिकाएँ (१९–२३)', 422, 'p1', 0, 0), ('द्वादश मन्त्र', 457, 'p1', 0, 0),
-    ('द्वादश मन्त्र पर कारिकाएँ (२४–२९)', 495, 'p1', 0, 0),
+    ('चार मन्त्रों पर कारिकाएँ (१९–२३)', 422, 'p1', 1, 23), ('द्वादश मन्त्र', 457, 'p1', 0, 0),
+    ('द्वादश मन्त्र पर कारिकाएँ (२४–२९)', 495, 'p1', 1, 29),
     ('वैतथ्य प्रकरण', ('pdf', 562), 'p2', 2, 38), ('अद्वैत प्रकरण', ('pdf', 739), 'p2', 3, 48), ('अलातशान्ति प्रकरण', ('pdf', 900), 'p2', 4, 100),
 ]
 
@@ -525,14 +545,17 @@ def gs_secs(P, labels):
         labels[561] = 536
         d = {'id': sid, 'num': num, 'title': title, 'start': pg, 'group': grp}
         if mx:
-            d['maxn'] = mx; d['id'] = f'pk{num}'
+            d['maxn'] = mx
+            d['id'] = f'pk{num}' if num > 1 else f'k1_{mx}'
+            if num == 1:
+                d['minn'] = {9: 0, 18: 9, 23: 18, 29: 23}[mx]
         out.append(d)
     return out
 
 
 CFG['gaudapada'] = dict(id='gaudapada', title='गौडपादसार', roman='Gauḍapāda Sāra', author='',
                         byline='माण्डूक्य-उपनिषत्-कारिका व्याख्या (भाग १–२)', kind='granth',
-                        pages=gs_pages, header_y=46, end=GS_V1 + 558, drop_start=drop_title, labels_first=True, scan=True, verse_w=0.9, smooth_labels=True, volumes=[(1, GS_V1), (GS_V1 + 1, GS_V1 + 558)], vol_front=0, header_kw='कारिका', skip=list(range(GS_V1 + 1, 562)), first='s1',
+                        pages=gs_pages, header_y=46, end=GS_V1 + 558, drop_start=drop_title, labels_first=True, scan=True, verse_w=0.9, smooth_labels=True, volumes=[(1, GS_V1), (GS_V1 + 1, GS_V1 + 558)], vol_front=0, header_kw='कारिका', skip=list(range(GS_V1 + 1, 562)), first='s1', vocab_correct=True, loose_verse=True,
                         sections=gs_secs, sec_label='प्रकरण', sec_abbr='प्र.',
                         groups={'front': 'प्रारम्भिक', 'p1': 'भाग १ · आगम प्रकरण', 'p2': 'भाग २'},
                         extra=[{'title': 'भाग १ · मुखपृष्ठ', 'page': 2}, {'title': 'भाग १ · अनुक्रमणिका', 'page': 3},

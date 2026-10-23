@@ -77,7 +77,13 @@ async function gotoRef(r) {
     if (!sec) { toast(`${book.title} में श्लोक ${toDev(r.n)} नहीं मिला`); return false; }
     location.hash = `#/b/${r.book}/r/${sec.id}?v=${r.n}`; return true;
   }
-  const sec = book.sections.find(s => s.num === r.num);
+  let sec = book.sections.find(s => s.num === r.num);
+  if (book.sections.filter(s => s.num === r.num).length > 1) {   // several sections share this number: use the śloka list
+    const rows = (await getSlokas(r.book)).filter(x => x[0] === r.num && x[5]);
+    // exact match, else the nearest numbered verse before it (same group of sections)
+    const row = rows.find(x => x[1] === r.n) || rows.filter(x => x[1] < r.n).sort((a, b) => b[1] - a[1])[0];
+    if (row && row[5]) sec = book.sections.find(s => s.id === row[5]) || sec;
+  }
   if (!sec) { toast(`${book.title} में ${abbr(book)} ${toDev(r.num)} नहीं है`); return false; }
   location.hash = `#/b/${r.book}/r/${sec.id}?v=${r.n}`; return true;
 }
@@ -609,7 +615,7 @@ async function viewSlokas(id) {
     const nf = normMap(roman2dev(f), true).trim();
     let html = '';
     book.sections.filter(s => s.num).forEach(s => {
-      let rows = bySec[s.num] || [];
+      let rows = (bySec[s.num] || []).filter(r => !r[5] || r[5] === s.id);
       if (ref) rows = rows.filter(r => r[0] === +ref[1] && r[1] === +ref[2]);
       else if (nf) rows = rows.filter(r => normMap(r[4], true).includes(nf));
       if (!rows.length) return;
