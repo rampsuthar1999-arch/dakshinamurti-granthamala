@@ -102,12 +102,26 @@
  },
  {
   "id": "naishkarmya",
-  "soon": true,
   "kind": "granth",
   "title": "नैष्कर्म्यसिद्धिः",
   "titleRoman": "Naiṣkarmya Siddhi",
-  "mark": "नै",
-  "note": "शीघ्र उपलब्ध"
+  "author": "श्रीमत्सुरेश्वराचार्य",
+  "byline": "श्रीमत्सुरेश्वराचार्यकृत, श्रीचित्सुखाचार्यकृत भावतत्त्वप्रकाशिका सहित",
+  "commentator": "श्री स्वामी प्रज्ञानानन्द सरस्वती (सानुवाद सम्पादन, श्री स्वामी महेशानन्द गिरि जी के निर्देशानुसार)",
+  "subtitle": "",
+  "cover": "pages/naishkarmya/1.webp",
+  "pages": 464,
+  "slokas": 265,
+  "sections": 4,
+  "secLabel": "अध्याय",
+  "aliases": [
+   "नैष्कर्म्यसिद्धि",
+   "नैष्कर्म्य",
+   "naishkarmya",
+   "naishkarmyasiddhi",
+   "ns"
+  ],
+  "globalNumbers": false
  },
  {
   "id": "shivananda",
@@ -129,12 +143,25 @@
  },
  {
   "id": "kaivalya",
-  "soon": true,
   "kind": "pravachan",
   "title": "कैवल्योपनिषद्",
   "titleRoman": "Kaivalya Upaniṣad",
-  "mark": "कै",
-  "note": "शीघ्र उपलब्ध"
+  "author": "",
+  "byline": "कैवल्योपनिषद् पर कथा-प्रवचन (व्याख्यान)",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/kaivalya/1.webp",
+  "pages": 411,
+  "slokas": 14,
+  "sections": 116,
+  "secLabel": "कथा",
+  "aliases": [
+   "कैवल्योपनिषद्",
+   "कैवल्य",
+   "kaivalya",
+   "kaivalyopanishad"
+  ],
+  "globalNumbers": false
  },
  {
   "id": "dahara",

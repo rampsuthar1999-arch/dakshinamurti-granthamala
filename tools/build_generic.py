@@ -1,7 +1,7 @@
 """Build app data for the additional books (legacy-font conversions and OCR)."""
 import pickle, json, os, re, sys, collections, html, glob
 sys.path.insert(0, '/home/claude/work'); sys.path.insert(0, '/home/claude/nb')
-from structure import parse_section, split_verses, number_slokas, page_labels, polish, dnum, VNUM
+from structure import parse_section, split_verses, number_slokas, number_slokas_lis, page_labels, polish, dnum, VNUM
 from pravachan import pnum
 
 NB = '/home/claude/nb'
@@ -80,11 +80,11 @@ def mark_verses(lines, header_y):
 
 
 # ---------------------------------------------------------------- section finders
-def pravachan_starts(P, header_y, first=None, extra_pat=None):
+def pravachan_starts(P, header_y, first=None, extra_pat=None, kw='प्रवचन'):
     out, last = [], 0
     for i, pg in enumerate(P):
         top = sorted(pg, key=lambda l: (l[1], l[0]))[:7]
-        nums = [n for n in (pnum(l[4]) for l in top) if n]
+        nums = [n for n in (pnum(l[4], kw) for l in top) if n]
         if nums and last < nums[0] <= last + 3:
             out.append((nums[0], i + 1)); last = nums[0]
         if extra_pat:
@@ -140,6 +140,7 @@ def build(cfg):
         os.remove(f)
     sections, slokas = [], []
     skip = set(cfg.get('skip', []))
+    run_max = 0
     for k, s in enumerate(secs):
         a = s['start']; b = secs[k + 1]['start'] - 1 if k + 1 < len(secs) else cfg['end']
         if b < a:
@@ -155,6 +156,18 @@ def build(cfg):
                         blk['n'] = g; blk['s'] = 1; found.append(g)
                     else:
                         del blk['n']
+        elif cfg.get('continuous'):
+            found = number_slokas_lis(bl, cfg['continuous'], start_after=run_max) if s.get('num') else []
+            run_max = max(found + [run_max])
+        elif cfg.get('one_per_section'):
+            found = []
+            for blk in bl:
+                if blk['t'] == 'v' and blk.get('n') == s.get('num') and not found:
+                    blk['s'] = 1; found.append(blk['n'])
+                elif blk['t'] == 'v':
+                    blk.pop('n', None); blk.pop('s', None)
+        elif s.get('maxn'):
+            found = number_slokas_lis(bl, s['maxn'])
         else:
             found = number_slokas(bl, window=12, gapfill=True) if s.get('num') else []
         rows = []
@@ -188,7 +201,7 @@ def build(cfg):
             'groups': cfg.get('groups', {'front': 'प्रारम्भिक', 'main': cfg.get('sec_plural', 'प्रवचन')}),
             'secLabel': cfg.get('sec_label', 'प्रवचन'), 'secAbbr': cfg.get('sec_abbr', 'प्र.'),
             'extraPages': cfg.get('extra', [{'title': 'मुखपृष्ठ', 'page': 1}]), 'sections': sections, 'kind': cfg.get('kind', 'pravachan')}
-    if cfg.get('global_paren'):
+    if cfg.get('global_paren') or cfg.get('continuous') or cfg.get('one_per_section'):
         book['globalNumbers'] = True
     json.dump(book, open(f'{OUT}/data/{bid}/book.json', 'w'), ensure_ascii=False, indent=1)
     json.dump(slokas, open(f'{OUT}/data/{bid}/slokas.json', 'w'), ensure_ascii=False, separators=(',', ':'))
@@ -208,8 +221,8 @@ def drop_title(body):
     return body[k:]
 
 
-def prav_secs(P, hy, front=None, first=None, extra=None, sub=''):
-    st = pravachan_starts(P, hy, first=first, extra_pat=extra)
+def prav_secs(P, hy, front=None, first=None, extra=None, sub='', kw='प्रवचन', label='प्रवचन'):
+    st = pravachan_starts(P, hy, first=first, extra_pat=extra, kw=kw)
     secs = []
     if front:
         secs.append({'id': 'front', 'title': front[0], 'start': front[1], 'group': 'front'})
@@ -219,7 +232,7 @@ def prav_secs(P, hy, front=None, first=None, extra=None, sub=''):
             secs.append({'id': f'x{len(secs)}', 'title': num[1].strip(), 'start': pg, 'group': 'appx'})
         else:
             n = num
-            secs.append({'id': f'p{num}', 'num': num, 'title': f'प्रवचन {str(num).translate(D2)}', 'start': pg, 'group': 'main', 'sub': sub})
+            secs.append({'id': f'p{num}', 'num': num, 'title': f'{label} {str(num).translate(D2)}', 'start': pg, 'group': 'main', 'sub': sub})
     return secs
 
 
@@ -265,6 +278,71 @@ CFG['bodhasara'] = dict(id='bodhasara', title='बोधसारः', roman='Bo
                         sections=lambda P: toc_secs(P, [3, 4, 5], 14, front=('प्राक्कथन', 6)), kind='granth',
                         sec_label='प्रकरण', sec_abbr='प्र.', groups={'front': 'प्रारम्भिक', 'main': 'प्रकरण'},
                         extra=[{'title': 'विषय-सूची', 'page': 3}, {'title': 'श्लोकसूची (मुद्रित)', 'page': 831}])
+
+
+
+def katha_secs(P):
+    toc = {}
+    for pn in range(7, 13):
+        for l in sorted(P[pn - 1], key=lambda l: (l[1], l[0])):
+            m = re.match(r'कथा\s*[-–]\s*([०-९]{1,3})\s*[:;]\s*(.*?)\s*([०-९]{1,3})?\s*$', l[4].strip())
+            if m:
+                toc[dnum(m.group(1))] = (m.group(2).strip(' ।.'), dnum(m.group(3)) + 12 if m.group(3) else None)
+    det = {n: pg for n, pg in pravachan_starts(P[12:], 60, kw='कथा')}
+    det = {n: pg + 12 for n, pg in det.items()}
+    secs = [{'id': 'front', 'title': 'प्रकाशकीय', 'start': 3, 'group': 'front'}]
+    last = 12
+    for n in sorted(set(toc) | set(det)):
+        pg = det.get(n) or (toc.get(n, (None, None))[1])
+        if not pg or pg <= last:
+            continue
+        t = toc.get(n, ('', None))[0]
+        secs.append({'id': f'k{n}', 'num': n, 'title': f'कथा {str(n).translate(D2)}' + (f' : {t}' if t else ''), 'start': pg, 'group': 'main'})
+        last = pg
+    return secs
+
+
+CFG['kaivalya'] = dict(id='kaivalya', title='कैवल्योपनिषद्', roman='Kaivalya Upaniṣad', byline='कैवल्योपनिषद् पर कथा-प्रवचन (व्याख्यान)',
+                       pages=lambda: pickle.load(open(f'{NB}/kaivalya_ocr.pkl', 'rb')), header_y=56, end=411, drop_start=drop_title,
+                       sections=katha_secs, sec_label='कथा', sec_abbr='क.', groups={'front': 'प्रारम्भिक', 'main': 'कथाएँ'},
+                       extra=[{'title': 'मुखपृष्ठ', 'page': 1}, {'title': 'विषय-सूची', 'page': 7}])
+
+
+NS_CH = [(1, 'प्रथमोऽध्यायः', 39, 'अज्ञान-निवृत्ति में कर्म की असमर्थता'), (2, 'द्वितीयोऽध्यायः', 142, 'महावाक्य से आत्मबोध'),
+         (3, 'तृतीयोऽध्यायः', 249, 'तत्त्वमसि-वाक्यार्थ विचार'), (4, 'चतुर्थोऽध्यायः', 400, 'उपसंहार')]
+CFG['naishkarmya'] = dict(id='naishkarmya', title='नैष्कर्म्यसिद्धिः', roman='Naiṣkarmya Siddhi', author='श्रीमत्सुरेश्वराचार्य',
+                          byline='श्रीमत्सुरेश्वराचार्यकृत, श्रीचित्सुखाचार्यकृत भावतत्त्वप्रकाशिका सहित', commentator='श्री स्वामी प्रज्ञानानन्द सरस्वती (सानुवाद सम्पादन, श्री स्वामी महेशानन्द गिरि जी के निर्देशानुसार)',
+                          pages=lambda: pickle.load(open(f'{NB}/naish_ocr.pkl', 'rb')), header_y=182, end=459, kind='granth',
+                          sections=lambda P: [{'id': 'bhumika', 'title': 'भूमिका', 'start': 3, 'group': 'front'},
+                                              {'id': 'prakkathan', 'title': 'प्राक्कथन', 'start': 12, 'group': 'front'}] +
+                                             [{'id': f'a{n}', 'num': n, 'title': t, 'start': a, 'group': 'main', 'maxn': mx} for (n, t, a, sub), mx in zip(NS_CH, [100, 119, 126, 77])],
+                          skip=list(range(17, 39)), sec_label='अध्याय', sec_abbr='अ.', groups={'front': 'प्रारम्भिक', 'main': 'अध्याय'},
+                          extra=[{'title': 'मुखपृष्ठ', 'page': 1}, {'title': 'विषयानुक्रमणिका', 'page': 17}])
+
+
+def heading_secs(P, pat, label, first_page=1, front=None):
+    """sections from centred title lines that match pat exactly (number in group 1)."""
+    secs = [{'id': 'front', 'title': front[0], 'start': front[1], 'group': 'front'}] if front else []
+    last = 0
+    for i, pg in enumerate(P[first_page - 1:], first_page):
+        for l in sorted(pg, key=lambda l: (l[1], l[0]))[:5]:
+            m = re.match(pat, re.sub(r'\s+', ' ', l[4].strip()))
+            if m:
+                n = dnum(m.group(1))
+                if last < n <= last + 3:
+                    secs.append({'id': f'n{n}', 'num': n, 'title': f'{label} {str(n).translate(D2)}', 'start': i, 'group': 'main'})
+                    last = n
+                break
+    return secs
+
+
+CFG['mahimna'] = dict(id='mahimna', title='श्रीशिवमहिम्नःस्तोत्रम्', roman='Śiva Mahimnaḥ Stotram', author='श्रीपुष्पदन्ताचार्य',
+                      byline='श्रीपुष्पदन्ताचार्यप्रणीत, श्लोकशः व्याख्या सहित', kind='granth', one_per_section=True,
+                      pages=lambda: pickle.load(open(f'{NB}/mahimna_ocr.pkl', 'rb')), header_y=60, end=233, drop_start=drop_title,
+                      sections=lambda P: heading_secs(P, r'^श\S*लोक\s*[-–]\s*([०-९]{1,2})$', 'श्लोक', 7, front=('भूमिका', 3)),
+                      sec_label='श्लोक', sec_abbr='श्लो.', groups={'front': 'प्रारम्भिक', 'main': 'श्लोक'},
+                      extra=[{'title': 'मुखपृष्ठ', 'page': 1}])
+
 
 if __name__ == '__main__':
     for b in sys.argv[1:]:

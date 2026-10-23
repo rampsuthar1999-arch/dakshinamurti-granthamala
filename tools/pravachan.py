@@ -7,11 +7,11 @@ ORDW = {'प्रथम': 1, 'पहला': 1, 'द्वितीय': 2, '�
         'एकोनविंश': 19, 'विंश': 20}
 
 
-def pnum(t):
+def pnum(t, kw='प्रवचन'):
     t = re.sub(r'\s+([्ािीुूृेैोौंँ])', r'\1', t.strip())
-    if len(t) > 30 or 'प्रवचन' not in t:
+    if len(t) > 30 or kw not in t:
         return None
-    m = re.search(r'प्रवचन\s*[-–:]?\s*([०-९]{1,2})', t)
+    m = re.search(kw + r'\s*[-–:]?\s*([०-९]{1,3})', t)
     if m:
         return dnum(m.group(1))
     for w, n in sorted(ORDW.items(), key=lambda x: -len(x[0])):

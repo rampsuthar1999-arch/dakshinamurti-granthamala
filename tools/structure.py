@@ -231,3 +231,51 @@ def polish(t, x):
         x = re.sub(r'[।॥|]{1,2}\s*([०-९]{1,3})\s*[।॥|]{1,2}\s*$', r'॥ \1॥', x)
     x = x.replace('।।', '॥')
     return x
+
+
+def number_slokas_lis(blocks, maxn, max_step=15, start_after=0):
+    """Choose verse numbers as the longest strictly increasing sequence (robust to stray/false numbers).
+    OCR noise: a number > maxn is also tried with its last digit dropped (२९२ → २९)."""
+    cands = []  # (block index, value)
+    for i, b in enumerate(blocks):
+        if b['t'] != 'v' or 'n' not in b:
+            continue
+        vals = [b['n']]
+        if b['n'] > maxn and b['n'] >= 10:
+            vals.append(b['n'] // 10)
+        for v in vals:
+            if start_after < v <= maxn:
+                cands.append((i, v))
+    # LIS over (index order, value strictly increasing, step <= max_step), one value per block
+    best = []  # best[k] = (length, prev_k)
+    for k, (i, v) in enumerate(cands):
+        bl, bp = 1 if v <= start_after + max_step else 0, -1
+        for j in range(k):
+            ij, vj = cands[j]
+            if ij < i and vj < v <= vj + max_step and best[j][0] > 0 and best[j][0] + 1 > bl:
+                bl, bp = best[j][0] + 1, j
+        best.append((bl, bp))
+    if not best:
+        return []
+    k = max(range(len(best)), key=lambda x: best[x][0])
+    chosen = {}
+    while k != -1 and best[k][0] > 0:
+        i, v = cands[k]; chosen[i] = v; k = best[k][1]
+    for i, b in enumerate(blocks):
+        if b['t'] == 'v':
+            if i in chosen:
+                b['n'] = chosen[i]; b['s'] = 1
+            else:
+                b.pop('n', None); b.pop('s', None)
+    # gap fill: unnumbered 2+-line verse blocks exactly filling a gap
+    main = sorted(chosen)
+    bounds = [(-1, start_after)] + [(i, chosen[i]) for i in main]
+    for (a_, na), (b_, nb) in zip(bounds, bounds[1:]):
+        gap = nb - na - 1
+        if gap <= 0:
+            continue
+        cand = [i for i in range(a_ + 1, b_) if blocks[i]['t'] == 'v' and 's' not in blocks[i] and blocks[i]['x'].count('\n') >= 1]
+        if len(cand) == gap:
+            for kk, i in enumerate(cand):
+                blocks[i]['n'] = na + 1 + kk; blocks[i]['s'] = 1; chosen[i] = na + 1 + kk
+    return sorted(chosen.values())
