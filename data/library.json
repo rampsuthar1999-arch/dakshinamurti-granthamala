@@ -1,15 +1,18 @@
 [
  {
   "id": "pancadashi",
+  "kind": "granth",
   "title": "पञ्चदशी",
   "titleRoman": "Pañcadaśī",
   "author": "श्रीमद्विद्यारण्यस्वामी",
+  "byline": "",
   "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
   "subtitle": "",
   "cover": "pages/pancadashi/1.webp",
   "pages": 1530,
   "slokas": 1567,
   "sections": 15,
+  "secLabel": "प्रकरण",
   "aliases": [
    "पञ्चदशी",
    "पंचदशी",
@@ -18,19 +21,23 @@
    "pancadasi",
    "panchadasi",
    "pd"
-  ]
+  ],
+  "globalNumbers": false
  },
  {
   "id": "anubhuti",
+  "kind": "granth",
   "title": "अनुभूतिप्रकाशः",
   "titleRoman": "Anubhūti Prakāśa",
   "author": "श्रीमद्विद्यारण्यस्वामी",
+  "byline": "",
   "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
   "subtitle": "द्वादश उपनिषदों की श्लोकबद्ध व्याख्या",
   "cover": "pages/anubhuti/1.webp",
   "pages": 1826,
   "slokas": 2791,
   "sections": 20,
+  "secLabel": "अध्याय",
   "aliases": [
    "अनुभूतिप्रकाश",
    "अनुभूति",
@@ -38,19 +45,23 @@
    "anubhutiprakash",
    "anubhooti",
    "ap"
-  ]
+  ],
+  "globalNumbers": false
  },
  {
   "id": "krishna-sandesh",
+  "kind": "granth",
   "title": "श्रीकृष्ण-सन्देश",
   "titleRoman": "Śrī Kṛṣṇa Sandeśa",
   "author": "श्रीमद्भगवद्गीता",
+  "byline": "श्रीमद्भगवद्गीता की विस्तृत व्याख्या",
   "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
   "subtitle": "",
   "cover": "pages/krishna-sandesh/1.webp",
   "pages": 1673,
   "slokas": 668,
   "sections": 18,
+  "secLabel": "अध्याय",
   "aliases": [
    "श्रीकृष्णसन्देश",
    "कृष्णसन्देश",
@@ -62,6 +73,178 @@
    "gita",
    "ks",
    "bg"
-  ]
+  ],
+  "globalNumbers": false
+ },
+ {
+  "id": "bodhasara",
+  "kind": "granth",
+  "title": "बोधसारः",
+  "titleRoman": "Bodhasāra",
+  "author": "श्रीमदाचार्यनरहरि",
+  "byline": "श्रीमदाचार्यनरहरिविरचित, आचार्य दिवाकर कृत दीप्ति टीका सहित",
+  "commentator": "आचार्य दिवाकर (दीप्ति टीका)",
+  "subtitle": "",
+  "cover": "pages/bodhasara/1.webp",
+  "pages": 878,
+  "slokas": 1354,
+  "sections": 62,
+  "secLabel": "प्रकरण",
+  "aliases": [
+   "बोधसार",
+   "बोधसारः",
+   "bodhasara",
+   "bodhsar",
+   "bodhasar",
+   "bs"
+  ],
+  "globalNumbers": true
+ },
+ {
+  "id": "naishkarmya",
+  "soon": true,
+  "kind": "granth",
+  "title": "नैष्कर्म्यसिद्धिः",
+  "titleRoman": "Naiṣkarmya Siddhi",
+  "mark": "नै",
+  "note": "शीघ्र उपलब्ध"
+ },
+ {
+  "id": "shivananda",
+  "soon": true,
+  "kind": "granth",
+  "title": "शिवानन्दलहरी",
+  "titleRoman": "Śivānanda Laharī",
+  "mark": "शि",
+  "note": "शीघ्र उपलब्ध"
+ },
+ {
+  "id": "mahimna",
+  "soon": true,
+  "kind": "granth",
+  "title": "श्रीशिवमहिम्नःस्तोत्रम्",
+  "titleRoman": "Śiva Mahimnaḥ Stotram",
+  "mark": "म",
+  "note": "शीघ्र उपलब्ध"
+ },
+ {
+  "id": "kaivalya",
+  "soon": true,
+  "kind": "pravachan",
+  "title": "कैवल्योपनिषद्",
+  "titleRoman": "Kaivalya Upaniṣad",
+  "mark": "कै",
+  "note": "शीघ्र उपलब्ध"
+ },
+ {
+  "id": "dahara",
+  "kind": "pravachan",
+  "title": "दहरविद्या",
+  "titleRoman": "Dahara Vidyā",
+  "author": "",
+  "byline": "छान्दोग्योपनिषद् (अष्टम अध्याय) की दहरविद्या पर प्रवचन",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/dahara/1.webp",
+  "pages": 277,
+  "slokas": 1,
+  "sections": 17,
+  "secLabel": "प्रवचन",
+  "aliases": [
+   "दहरविद्या",
+   "दहर",
+   "dahara",
+   "daharavidya"
+  ],
+  "globalNumbers": false
+ },
+ {
+  "id": "svetaketu",
+  "kind": "pravachan",
+  "title": "श्वेतकेतुविद्या",
+  "titleRoman": "Śvetaketu Vidyā",
+  "author": "",
+  "byline": "छान्दोग्योपनिषद् (षष्ठ अध्याय) पर प्रवचन",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/svetaketu/1.webp",
+  "pages": 299,
+  "slokas": 0,
+  "sections": 51,
+  "secLabel": "प्रवचन",
+  "aliases": [
+   "श्वेतकेतुविद्या",
+   "श्वेतकेतु",
+   "svetaketu",
+   "shvetaketu"
+  ],
+  "globalNumbers": false
+ },
+ {
+  "id": "chidananda",
+  "kind": "pravachan",
+  "title": "चिदानन्दलहरी",
+  "titleRoman": "Cidānanda Laharī",
+  "author": "",
+  "byline": "सौन्दर्यलहरी के अष्टम श्लोक की व्याख्या (प्रवचन)",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/chidananda/1.webp",
+  "pages": 575,
+  "slokas": 0,
+  "sections": 58,
+  "secLabel": "प्रवचन",
+  "aliases": [
+   "चिदानन्दलहरी",
+   "चिदानंदलहरी",
+   "चिदानन्द",
+   "chidananda",
+   "chidanandalahari"
+  ],
+  "globalNumbers": false
+ },
+ {
+  "id": "purushottama",
+  "kind": "pravachan",
+  "title": "श्रीपुरुषोत्तमयोग",
+  "titleRoman": "Puruṣottama Yoga",
+  "author": "",
+  "byline": "श्रीमद्भगवद्गीता के पञ्चदश अध्याय पर प्रवचन",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/purushottama/1.webp",
+  "pages": 206,
+  "slokas": 13,
+  "sections": 20,
+  "secLabel": "प्रवचन",
+  "aliases": [
+   "पुरुषोत्तमयोग",
+   "पुरुषोत्तम",
+   "purushottama",
+   "purushottam"
+  ],
+  "globalNumbers": false
+ },
+ {
+  "id": "shivasankalpa",
+  "kind": "pravachan",
+  "title": "शिवसंकल्पसूक्त",
+  "titleRoman": "Śiva Saṅkalpa Sūkta",
+  "author": "",
+  "byline": "शुक्ल यजुर्वेद (अध्याय ३४) के शिवसंकल्पसूक्त पर प्रवचन",
+  "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+  "subtitle": "",
+  "cover": "pages/shivasankalpa/1.webp",
+  "pages": 552,
+  "slokas": 6,
+  "sections": 63,
+  "secLabel": "प्रकरण",
+  "aliases": [
+   "शिवसंकल्पसूक्त",
+   "शिवसंकल्प",
+   "shivasankalpa",
+   "sivasankalpa"
+  ],
+  "globalNumbers": false
  }
 ]

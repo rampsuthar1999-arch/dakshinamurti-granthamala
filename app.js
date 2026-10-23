@@ -47,7 +47,14 @@ const fold = s => normMap(roman2dev(String(s).toLowerCase()), true).replace(/\s+
 function parseRef(q, lib, defBook) {
   const t = String(q).trim().replace(/[०-९]/g, d => DEV.indexOf(d));
   const m = t.match(/^(.*?)[\s,:]*(\d{1,2})\s*[.:,/\s]\s*(\d{1,3})\s*$/);
-  if (!m) return null;
+  if (!m) {
+    const g = t.match(/^(.*?)[\s,:]*(\d{1,4})\s*$/);
+    if (!g) return null;
+    const f = fold(g[1].trim());
+    const bk = f ? lib.find(b => b.globalNumbers && (b.aliases || []).concat([b.title, b.titleRoman, b.id]).some(a => { const fa = fold(a); return fa && (fa.startsWith(f) || f.startsWith(fa)); }))
+                 : lib.find(b => b.id === defBook && b.globalNumbers);
+    return bk ? { book: bk.id, title: bk.title, global: true, n: +g[2] } : null;
+  }
   let book = null; const name = m[1].trim();
   if (name) {
     const f = fold(name);
@@ -60,9 +67,16 @@ function parseRef(q, lib, defBook) {
 function sectionForPage(book, pg) {
   return book.sections.find(s => pg >= s.start && pg <= s.end);
 }
-function secLabel(s) { return s.num ? `${toDev(s.num)}. ${s.title}` : s.title; }
+const hasNum = s => s.num && s.title.includes(toDev(s.num));
+function secLabel(s) { return s.num && !hasNum(s) ? `${toDev(s.num)}. ${s.title}` : s.title; }
 async function gotoRef(r) {
   const book = await getBook(r.book);
+  if (r.global) {
+    const row = (await getSlokas(r.book)).find(x => x[1] === r.n);
+    const sec = row && book.sections.find(s => s.num === row[0]);
+    if (!sec) { toast(`${book.title} में श्लोक ${toDev(r.n)} नहीं मिला`); return false; }
+    location.hash = `#/b/${r.book}/r/${sec.id}?v=${r.n}`; return true;
+  }
   const sec = book.sections.find(s => s.num === r.num);
   if (!sec) { toast(`${book.title} में ${abbr(book)} ${toDev(r.num)} नहीं है`); return false; }
   location.hash = `#/b/${r.book}/r/${sec.id}?v=${r.n}`; return true;
@@ -236,20 +250,20 @@ async function viewLibrary() {
       <button class="btn primary" type="submit">जाएँ</button>
     </form>
     <div class="ornament">✦</div>
-    <div class="shelf">
-      ${lib.map(b => `<a class="book-card" href="#/b/${b.id}">
+    ${[['granth', 'ग्रन्थ एवं व्याख्याएँ'], ['pravachan', 'प्रवचन-संग्रह']].map(([k, label]) => `<h2 class="shelf-h">${label}</h2><div class="shelf">
+      ${lib.filter(b => (b.kind || 'granth') === k).map(b => `<a class="book-card" href="#/b/${b.id}">
         <img src="${b.cover}" alt="${esc(b.title)} मुखपृष्ठ" loading="lazy">
         <div><div class="rom">${esc(b.titleRoman)}</div><h2>${esc(b.title)}</h2>
-        <div class="meta">${esc(b.author)}${b.subtitle ? '<br>' + esc(b.subtitle) : ''}<br>व्याख्या: ${esc(b.commentator)}</div>
-        <div class="stats">${toDev(b.slokas)} श्लोक · ${toDev(b.pages)} पृष्ठ</div></div></a>`).join('')}
-      ${(lib.soon || []).map(b => `<div class="book-card soon"><div class="ph">${esc(b.mark)}</div><div><div class="rom">${esc(b.titleRoman)}</div><h2>${esc(b.title)}</h2><div class="meta">${esc(b.note || 'शीघ्र उपलब्ध')}</div></div></div>`).join('')}
-    </div>
+        <div class="meta">${b.byline ? esc(b.byline) : esc(b.author) + (b.subtitle ? '<br>' + esc(b.subtitle) : '')}<br>${b.kind === 'pravachan' ? 'प्रवक्ता' : 'व्याख्या'}: ${esc(b.commentator)}</div>
+        <div class="stats">${b.kind === 'pravachan' ? toDev(b.sections) + ' ' + esc(b.secLabel || 'प्रवचन') : toDev(b.slokas) + ' श्लोक'} · ${toDev(b.pages)} पृष्ठ</div></div></a>`).join('')}
+      ${(lib.soon || []).filter(b => (b.kind || 'granth') === k).map(b => `<div class="book-card soon"><div class="ph">${esc(b.mark)}</div><div><div class="rom">${esc(b.titleRoman)}</div><h2>${esc(b.title)}</h2><div class="meta">${esc(b.note || 'शीघ्र उपलब्ध')}</div></div></div>`).join('')}
+    </div>`).join('')}
     ${CREDIT}
     <p class="footer"><a href="#/about">इस ऐप के बारे में</a> · <a href="${REPO}" target="_blank" rel="noopener">GitHub</a>${installEvt ? ' · <a href="#" id="install">📲 ऐप इंस्टॉल करें</a>' : ''}</p>
   </div>`;
   $('#jump').onsubmit = async e => {
     e.preventDefault();
-    const q = $('#jump-q').value; const r = parseRef(q, lib, null);
+    const q = $('#jump-q').value; const r = parseRef(q, libAll.filter(b => !b.soon), null);
     if (r) { gotoRef(r); return; }
     if (/\d|[०-९]/.test(q)) toast('संदर्भ समझ नहीं आया — जैसे “पञ्चदशी ९.२” लिखें');
     else if (q.trim()) location.hash = '#/search?q=' + encodeURIComponent(q.trim());
@@ -284,13 +298,13 @@ async function viewBook(id) {
       <div>
         <div class="rom" style="color:var(--muted);font-size:13px;letter-spacing:.05em">${esc(book.titleRoman)} · ${esc(book.series)}</div>
         <h1>${esc(book.title)}</h1>
-        <p class="by">${esc(book.byline || book.author + ' विरचित')}<br>व्याख्याता: ${esc(book.commentator)}<br><span style="color:var(--muted)">${esc(book.publisher)}</span></p>
+        <p class="by">${esc(book.byline || book.author + ' विरचित')}<br>${book.kind === 'pravachan' ? 'प्रवक्ता' : 'व्याख्याता'}: ${esc(book.commentator)}<br><span style="color:var(--muted)">${esc(book.publisher)}</span></p>
       </div>
     </div>
     <div class="actions">
       ${lastSec ? `<a class="btn primary" href="#/b/${id}/r/${lastSec.id}?b=${last.b}">▶ पढ़ना जारी रखें — ${esc(lastSec.title.replace('ब्रह्मानन्द में ', ''))}</a>`
                : `<a class="btn primary" href="#/b/${id}/r/${firstSec(book)}">▶ पढ़ना आरम्भ करें</a>`}
-      <a class="btn" href="#/b/${id}/slokas">श्लोक सूची</a>
+      ${book.sections.some(s => s.slokas) ? `<a class="btn" href="#/b/${id}/slokas">श्लोक सूची</a>` : ''}
       <a class="btn" href="#/search?book=${id}">खोजें</a>
     </div>
     <div class="actions" style="margin-top:10px">
@@ -368,7 +382,7 @@ function renderBlocks(book, sec) {
     const mk = bm.has(i) ? ' marked' : '';
     if (t === 'v') {
       const main = n ? ' s' : ' q';
-      html += `<div class="blk v${main}${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${n ? `<span class="vnum">${abbr(book)} ${toDev(sec.num)} · श्लोक ${toDev(n)}</span>` : ''}${esc(x.replace(/\s+([॥।]?\s*[०-९]+\s*॥)/g, '\u00a0$1').replace(/([॥।])\s+([०-९])/g, '$1\u00a0$2'))}</div>`;
+      html += `<div class="blk v${main}${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${n ? `<span class="vnum">${book.globalNumbers ? '' : abbr(book) + ' ' + toDev(sec.num) + ' · '}श्लोक ${toDev(n)}</span>` : ''}${esc(x.replace(/\s+([॥।]?\s*[०-९]+\s*॥)/g, '\u00a0$1').replace(/([॥।])\s+([०-९])/g, '$1\u00a0$2'))}</div>`;
     } else if (t === 'sh') {
       html += `<h3 class="blk sh${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${esc(x)}</h3>`;
     } else {
@@ -382,7 +396,7 @@ async function viewReader(id, sid, q) {
   const book = await getBook(id);
   const meta = book.sections.find(s => s.id === sid);
   if (!meta) { location.hash = '#/b/' + id; return; }
-  setBar({ title: meta.num ? `${toDev(meta.num)}. ${meta.title.replace('ब्रह्मानन्द में ', '')}` : meta.title, back: '#/b/' + id, toc: true, split: true });
+  setBar({ title: meta.num && !hasNum(meta) ? `${toDev(meta.num)}. ${meta.title.replace('ब्रह्मानन्द में ', '')}` : meta.title, back: '#/b/' + id, toc: true, split: true });
   fillDrawer(book, sid);
   app.innerHTML = `<div class="loading">लोड हो रहा है…</div>`;
   const sec = await getSection(id, sid);
@@ -393,7 +407,7 @@ async function viewReader(id, sid, q) {
     <article class="reader" id="reader" lang="hi">
       <header class="sec-head">
         <div class="k">${esc(book.title)} · ${esc(meta.sub || groupName)}</div>
-        <h1>${meta.num ? `<span style="color:var(--accent)">${toDev(meta.num)}.</span> ` : ''}${esc(meta.title)}</h1>
+        <h1>${meta.num && !hasNum(meta) ? `<span style="color:var(--accent)">${toDev(meta.num)}.</span> ` : ''}${esc(meta.title)}</h1>
         <div class="orn">❁</div>
       </header>
       ${renderBlocks(book, sec)}
@@ -600,7 +614,7 @@ async function viewSlokas(id) {
       else if (nf) rows = rows.filter(r => normMap(r[4], true).includes(nf));
       if (!rows.length) return;
       html += `<h3 class="sl-sec">${toDev(s.num)}. ${esc(s.title)}${s.sub ? ` <small class="sub">${esc(s.sub)}</small>` : ''}</h3><ul class="sl-list">` +
-        rows.map(r => `<li><a href="#/b/${id}/r/${s.id}?v=${r[1]}"><span class="ref">${toDev(r[0])}.${toDev(r[1])}</span><span class="ln">${esc(r[4])}</span><span class="pgn">${pageLabel(book, r[3])}</span></a></li>`).join('') + '</ul>';
+        rows.map(r => `<li><a href="#/b/${id}/r/${s.id}?v=${r[1]}"><span class="ref">${book.globalNumbers ? toDev(r[1]) : toDev(r[0]) + '.' + toDev(r[1])}</span><span class="ln">${esc(r[4])}</span><span class="pgn">${pageLabel(book, r[3])}</span></a></li>`).join('') + '</ul>';
     });
     $('#sl-body').innerHTML = html || '<p class="empty">कोई श्लोक नहीं मिला</p>';
   };
