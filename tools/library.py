@@ -11,6 +11,8 @@ META = {
                         title='नैष्कर्म्यसिद्धिः', roman='Naiṣkarmya Siddhi'),
     'shivananda': dict(kind='granth', aliases=['शिवानन्दलहरी', 'शिवानंदलहरी', 'शिवानन्द', 'shivanandalahari', 'shivananda', 'sl'], mark='शि',
                        title='शिवानन्दलहरी', roman='Śivānanda Laharī'),
+    'gaudapada': dict(kind='granth', aliases=['गौडपादसार', 'गौडपाद', 'माण्डूक्य', 'मांडूक्य', 'कारिका', 'gaudapada', 'gaudapadasara', 'gaudpaadsaara', 'mandukya', 'karika'], mark='गौ',
+                      title='गौडपादसार', roman='Gauḍapāda Sāra'),
     'mahimna': dict(kind='granth', aliases=['शिवमहिम्नःस्तोत्र', 'महिम्न', 'महिम्नस्तोत्र', 'mahimna', 'shivamahimna', 'mahimnah'], mark='म',
                     title='श्रीशिवमहिम्नःस्तोत्रम्', roman='Śiva Mahimnaḥ Stotram'),
     'kaivalya': dict(kind='pravachan', aliases=['कैवल्योपनिषद्', 'कैवल्य', 'kaivalya', 'kaivalyopanishad'], mark='कै',
@@ -21,7 +23,7 @@ META = {
     'purushottama': dict(kind='pravachan', aliases=['पुरुषोत्तमयोग', 'पुरुषोत्तम', 'purushottama', 'purushottam'], mark='पु'),
     'shivasankalpa': dict(kind='pravachan', aliases=['शिवसंकल्पसूक्त', 'शिवसंकल्प', 'shivasankalpa', 'sivasankalpa'], mark='सं'),
 }
-ORDER = ['pancadashi', 'anubhuti', 'krishna-sandesh', 'bodhasara', 'naishkarmya', 'shivananda', 'mahimna',
+ORDER = ['pancadashi', 'anubhuti', 'krishna-sandesh', 'gaudapada', 'bodhasara', 'naishkarmya', 'shivananda', 'mahimna',
          'kaivalya', 'dahara', 'svetaketu', 'chidananda', 'purushottama', 'shivasankalpa']
 lib = []
 for bid in ORDER:

@@ -34,7 +34,37 @@ def load_ocr(d, n, scale=300 / 72.0):
     return P
 
 
+def scan_clean(t):
+    t = re.sub(r'^[\s.:;,\'"`_…·\-]{2,}', '', t)          # dot-runs from shadowed margins
+    t = re.sub(r'[\s.:;,\'`_…·]{3,}$', '', t)
+    t = re.sub(r'\s[.:\'`_]{2,}\s', ' ', t)
+    t = re.sub(r'([।॥]{1,2}\s*[०-९]{1,3}\s*[।॥]{1,2})[^।॥]{0,9}$', r'\1', t)   # junk after a verse number
+    return t.strip()
+
+
+def scan_normalise(lines, header_y):
+    """skewed phone scans: decide paragraph starts from the previous line's length, not from indentation."""
+    ls = sorted(lines, key=lambda l: (l[1], l[0]))
+    body = [l for l in ls if l[1] > header_y and l[0] < 300]   # verse-marked lines were shifted by +400
+    if len(body) < 3:
+        return ls
+    right = sorted(l[2] for l in body)[int(len(body) * 0.8)]
+    base = sorted(l[0] for l in body)[len(body) // 5]
+    prev_short = True
+    for l in ls:
+        if l[1] <= header_y:
+            continue
+        if l[0] >= 300:            # verse line: leave as is, next prose line starts a paragraph
+            prev_short = True
+            continue
+        l[0] = base + 20 if prev_short else base
+        prev_short = l[2] < right - 45
+    return ls
+
+
 def fix_text(t, cfg):
+    if cfg.get('scan'):
+        t = scan_clean(t)
     t = re.sub(r'\s+([्ािीुूृेैोौंँ़])', r'\1', t)                     # stray space before a vowel sign / virama
     t = re.sub(r'(?<=[०-९])ण्(?=[०-९])', '.', t)                      # dates: २५ण्३ण्७६ → २५.३.७६
     if cfg.get('ddha_sha'):
@@ -132,9 +162,33 @@ def build(cfg):
                     GLOB[(pn, dnum(m.group(1)))] = dnum(m.group(2))
     P = [[[l[0], l[1], l[2], l[3], fix_text(l[4], cfg)] for l in pg] for pg in P]
     hy = cfg['header_y']
-    pages = [mark_verses([list(l) for l in pg], hy, cfg.get('verse_w', 0.85)) for pg in P]
+    pages = [mark_verses([list(l) for l in pg if l[4]], hy, cfg.get('verse_w', 0.85)) for pg in P]
+    if cfg.get('scan'):
+        pages = [scan_normalise(pg, hy) for pg in pages]
     labels = page_labels(pages, hy, N) if not cfg.get('offset_labels') else [max(0, p - cfg['offset_labels']) for p in range(1, N + 1)]
-    secs = cfg['sections'](P)
+    if cfg.get('smooth_labels'):
+        vols = cfg.get('volumes', [(1, N)])
+        fixed = list(labels)
+        for va, vb in vols:
+            offs = sorted((i + 1) - labels[i] for i in range(va - 1, vb) if labels[i])
+            if not offs:
+                continue
+            for i in range(va - 1, vb):
+                # local offset from this volume's good labels nearby (offset drifts slowly with plates/blank pages)
+                near = sorted((j + 1) - labels[j] for j in range(max(va - 1, i - 40), min(vb, i + 41))
+                              if labels[j] and abs(((j + 1) - labels[j]) - offs[len(offs) // 2]) <= 8)
+                med = near[len(near) // 2] if near else offs[len(offs) // 2]
+                exp = (i + 1) - med
+                l = labels[i]
+                if l and abs(l - exp) <= 3:
+                    continue
+                alts = [x for x in ([l - 200, l + 200, l - 20, l + 20, l - 2, l + 2, l - 400] if l else []) if abs(x - exp) <= 3]
+                fixed[i] = alts[0] if alts else exp
+        labels = fixed
+        for va, vb in cfg.get('volumes', []):
+            for q in range(va - 1, min(vb, va - 1 + cfg.get('vol_front', 0))):
+                labels[q] = 0
+    secs = cfg['sections'](P, labels) if cfg.get('labels_first') else cfg['sections'](P)
     os.makedirs(f'{OUT}/data/{bid}', exist_ok=True)
     for f in glob.glob(f'{OUT}/data/{bid}/*.json'):
         os.remove(f)
@@ -174,6 +228,37 @@ def build(cfg):
                         blk['n'] = s['num']; blk['s'] = 1; found.append(s['num']); break
         elif s.get('maxn'):
             found = number_slokas_lis(bl, s['maxn'])
+            if cfg.get('header_kw'):
+                hdr = []
+                for pn in range(a, b + 1):
+                    for l in sorted(P[pn - 1], key=lambda l: (l[1], l[0]))[:2]:
+                        m = re.search(cfg['header_kw'] + r'\s*[-–]?\s*[\'"]?\s*([०-९]{1,3})', l[4])
+                        if m:
+                            hdr.append((pn, dnum(m.group(1)))); break
+                # LIS over header numbers (OCR noise)
+                best = []
+                for k, (pg, v) in enumerate(hdr):
+                    bl_, bp = (1 if v <= 5 else 0), -1
+                    for j in range(k):
+                        if hdr[j][1] <= v <= hdr[j][1] + 4 and best[j][0] > 0 and best[j][0] + 1 > bl_:
+                            bl_, bp = best[j][0] + 1, j
+                    best.append((bl_, bp))
+                firstpg = {}
+                if best:
+                    k_ = max(range(len(best)), key=lambda x: best[x][0]); seq = []
+                    while k_ != -1 and best[k_][0] > 0:
+                        seq.append(hdr[k_]); k_ = best[k_][1]
+                    for pg, v in reversed(seq):
+                        if v <= s['maxn']:
+                            firstpg.setdefault(v, pg)
+                have = set(found)
+                for v, pg in sorted(firstpg.items()):
+                    if v in have:
+                        continue
+                    for blk in bl:
+                        if blk['t'] == 'v' and not blk.get('s') and pg - 1 <= blk['pg'] <= pg:
+                            blk['n'] = v; blk['s'] = 1; found.append(v); have.add(v); break
+                found = sorted(found)
         else:
             found = number_slokas(bl, window=12, gapfill=True) if s.get('num') else []
         rows = []
@@ -200,7 +285,7 @@ def build(cfg):
         json.dump({**meta, 'blocks': rows}, open(f'{OUT}/data/{bid}/{sid}.json', 'w'), ensure_ascii=False, separators=(',', ':'))
         meta['slokas'] = len(found)
         sections.append(meta)
-    first = next((s['id'] for s in sections if s['num']), sections[0]['id'])
+    first = cfg.get('first') or next((s['id'] for s in sections if s['num']), sections[0]['id'])
     book = {'id': bid, 'title': cfg['title'], 'titleRoman': cfg['roman'], 'author': cfg.get('author', ''),
             'byline': cfg.get('byline', ''), 'commentator': cfg.get('commentator', COMM), 'publisher': PUB,
             'series': cfg.get('series', ''), 'pages': N, 'imgDir': f'pages/{bid}', 'labels': labels, 'firstSection': first,
@@ -399,6 +484,59 @@ CFG['shivananda'] = dict(id='shivananda', title='शिवानन्दलह�
                                             [{'id': 'tika', 'title': 'शिवानन्दलहरीव्याख्या (संस्कृत टीका)', 'start': 291, 'group': 'tika'}],
                          sec_label='श्लोक', sec_abbr='श्लो.', groups={'front': 'प्रारम्भिक', 'main': 'श्लोक एवं हिन्दी व्याख्या', 'tika': 'संस्कृत टीका'},
                          extra=[{'title': 'मुखपृष्ठ', 'page': 1}, {'title': 'विषयसूची', 'page': 3}, {'title': 'श्लोक सूची', 'page': 362}])
+
+
+GS_V1 = 554
+GS_SECS = [  # (title, printed page, group, num, maxn)
+    ('भूमिका', None, 'front', 0, 0),
+    ('भाष्य मङ्गल', 1, 'p1', 0, 0), ('सम्बन्ध ग्रन्थ', 15, 'p1', 0, 0), ('प्रथम मन्त्र', 51, 'p1', 0, 0),
+    ('द्वितीय मन्त्र', 60, 'p1', 0, 0), ('तृतीय मन्त्र', 80, 'p1', 0, 0), ('चतुर्थ मन्त्र', 118, 'p1', 0, 0),
+    ('पञ्चम मन्त्र', 135, 'p1', 0, 0), ('षष्ठ मन्त्र', 157, 'p1', 0, 0), ('प्रारम्भिक नौ कारिकाएँ (१–९)', 165, 'p1', 0, 0),
+    ('सप्तम मन्त्र', 244, 'p1', 0, 0), ('सप्तम मन्त्र पर कारिकाएँ (१०–१८)', 301, 'p1', 0, 0), ('अष्टम मन्त्र', 399, 'p1', 0, 0),
+    ('नवम मन्त्र', 410, 'p1', 0, 0), ('दशम मन्त्र', 417, 'p1', 0, 0), ('एकादश मन्त्र', 419, 'p1', 0, 0),
+    ('चार मन्त्रों पर कारिकाएँ (१९–२३)', 422, 'p1', 0, 0), ('द्वादश मन्त्र', 457, 'p1', 0, 0),
+    ('द्वादश मन्त्र पर कारिकाएँ (२४–२९)', 495, 'p1', 0, 0),
+    ('वैतथ्य प्रकरण', ('pdf', 562), 'p2', 2, 38), ('अद्वैत प्रकरण', ('pdf', 739), 'p2', 3, 48), ('अलातशान्ति प्रकरण', ('pdf', 900), 'p2', 4, 100),
+]
+
+
+def gs_pages():
+    return load_ocr('gs1', GS_V1) + load_ocr('gs2', 558)
+
+
+def gs_secs(P, labels):
+    pdf_of = {}
+    for i, n in enumerate(labels, 1):
+        if n and n not in pdf_of:
+            pdf_of[n] = i
+    out = []
+    for title, pp, grp, num, mx in GS_SECS:
+        if pp is None:
+            pg = 4
+        elif isinstance(pp, tuple):
+            pg = pp[1]
+        else:
+            pg = pdf_of.get(pp) or next((pdf_of[q] - (q - pp) for q in range(pp, pp + 6) if q in pdf_of), None)
+            if not pg:
+                print('  !! no pdf page for printed', pp, title); continue
+        sid = 'bh' if pp is None else f's{len(out)}'
+        for q in range(GS_V1, 561):   # volume II cover and contents pages carry no printed number
+            labels[q] = 0
+        labels[561] = 536
+        d = {'id': sid, 'num': num, 'title': title, 'start': pg, 'group': grp}
+        if mx:
+            d['maxn'] = mx; d['id'] = f'pk{num}'
+        out.append(d)
+    return out
+
+
+CFG['gaudapada'] = dict(id='gaudapada', title='गौडपादसार', roman='Gauḍapāda Sāra', author='',
+                        byline='माण्डूक्य-उपनिषत्-कारिका व्याख्या (भाग १–२)', kind='granth',
+                        pages=gs_pages, header_y=46, end=GS_V1 + 558, drop_start=drop_title, labels_first=True, scan=True, verse_w=0.9, smooth_labels=True, volumes=[(1, GS_V1), (GS_V1 + 1, GS_V1 + 558)], vol_front=0, header_kw='कारिका', skip=list(range(GS_V1 + 1, 562)), first='s1',
+                        sections=gs_secs, sec_label='प्रकरण', sec_abbr='प्र.',
+                        groups={'front': 'प्रारम्भिक', 'p1': 'भाग १ · आगम प्रकरण', 'p2': 'भाग २'},
+                        extra=[{'title': 'भाग १ · मुखपृष्ठ', 'page': 2}, {'title': 'भाग १ · अनुक्रमणिका', 'page': 3},
+                               {'title': 'भाग २ · विषय-सूची', 'page': GS_V1 + 2}])
 
 
 if __name__ == '__main__':

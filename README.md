@@ -18,6 +18,7 @@ All credit and rights belong to Shri Dakshinamurti Math. This is a non-commercia
 | अनुभूतिप्रकाशः (Anubhūti Prakāśa) — श्रीमद्विद्यारण्यस्वामी, verse commentary on 12 Upaniṣads | ✅ 20 adhyāyas · 2,791 ślokas · 1,826 pages |
 | श्रीकृष्ण-सन्देश (Śrī Kṛṣṇa Sandeśa) — commentary on the Bhagavad Gītā | ✅ 18 adhyāyas · 668 of 700 ślokas indexed · 1,673 pages |
 
+| गौडपादसार (Gauḍapāda Sāra) — माण्डूक्य-उपनिषत्-कारिका व्याख्या, भाग १–२ | ✅ 4 prakaraṇas (Āgama by mantra/kārikā group) · OCR of phone scans |
 | बोधसारः (Bodhasāra) — श्रीमदाचार्यनरहरि, दीप्ति टीका | ✅ 61 prakaraṇas · 1,335 verses (running numbers) |
 | नैष्कर्म्यसिद्धिः (Naiṣkarmya Siddhi) — श्रीमत्सुरेश्वराचार्य, भावतत्त्वप्रकाशिका | ✅ 4 adhyāyas · OCR |
 | शिवानन्दलहरी (Śivānanda Laharī) — श्रीमद्भगवत्पादाचार्य | ✅ 100 ślokas with Hindi commentary + Sanskrit ṭīkā · OCR |
