@@ -4,6 +4,7 @@ OUT = sys.argv[1]
 os.makedirs(f'{OUT}/data/pancadashi', exist_ok=True)
 allsec = pickle.load(open('/home/claude/work/parsed.pkl', 'rb'))
 
+from structure import polish
 FIX = [('पज्चदशी', 'पञ्चदशी'), ('पजञ्चदशी', 'पञ्चदशी'), ('‍', '')]
 
 
@@ -24,6 +25,7 @@ for (sid, num, title, group, a, b), blocks in allsec:
             continue
         if t == 'v' and not bl.get('s') and re.search(r'समाप्त|सम्पूर्ण|पूर्ण हुआ', x) and len(x) < 160:
             t = 'e'
+        x = polish(t, x)
         row = [t, bl['pg'], x]
         if bl.get('s'):
             row.append(bl['n'])
@@ -48,7 +50,8 @@ book = {
     'publisher': 'श्रीदक्षिणामूर्ति मठ प्रकाशन, वाराणसी',
     'series': 'श्रीदक्षिणामूर्तिसंस्कृतग्रन्थमाला – ८२',
     'pages': 1530,
-    'pageOffset': 10,  # printed page = pdf page - 10 (for pdf page >= 11)
+    'pageOffset': 10,
+    'firstSection': 'p1', 'secLabel': 'प्रकरण', 'secAbbr': 'प्र.',  # printed page = pdf page - 10 (for pdf page >= 11)
     'imgDir': 'pages/pancadashi',
     'groups': {
         'front': 'प्रारम्भिक',

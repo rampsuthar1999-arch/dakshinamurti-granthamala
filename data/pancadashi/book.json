@@ -8,6 +8,9 @@
  "series": "श्रीदक्षिणामूर्तिसंस्कृतग्रन्थमाला – ८२",
  "pages": 1530,
  "pageOffset": 10,
+ "firstSection": "p1",
+ "secLabel": "प्रकरण",
+ "secAbbr": "प्र.",
  "imgDir": "pages/pancadashi",
  "groups": {
   "front": "प्रारम्भिक",

@@ -1,10 +1,27 @@
 {
   "name": "दक्षिणामूर्ति ग्रन्थमाला",
   "short_name": "ग्रन्थमाला",
+  "description": "श्रीदक्षिणामूर्ति मठ प्रकाशन के ग्रन्थ — पञ्चदशी, अनुभूतिप्रकाश, श्रीकृष्ण-सन्देश",
+  "id": "./",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#faf6ee",
-  "theme_color": "#faf6ee",
+  "theme_color": "#a8461a",
   "lang": "hi",
-  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "dir": "ltr",
+  "categories": ["books", "education"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "पञ्चदशी", "url": "./#/b/pancadashi" },
+    { "name": "अनुभूतिप्रकाश", "url": "./#/b/anubhuti" },
+    { "name": "श्रीकृष्ण-सन्देश", "url": "./#/b/krishna-sandesh" },
+    { "name": "खोजें", "url": "./#/search" }
+  ]
 }

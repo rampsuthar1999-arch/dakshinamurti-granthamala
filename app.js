@@ -29,13 +29,44 @@ const getBook = id => getJSON(`data/${id}/book.json`);
 const getSection = (id, sid) => getJSON(`data/${id}/${sid}.json`);
 const getSlokas = id => getJSON(`data/${id}/slokas.json`);
 
-function pageLabel(book, pg) {
-  return pg > book.pageOffset ? 'पृ. ' + toDev(pg - book.pageOffset) : 'प्रारम्भिक पृ. ' + toDev(pg);
+function printed(book, pg) {
+  return book.labels ? (book.labels[pg - 1] || 0) : (pg > book.pageOffset ? pg - book.pageOffset : 0);
+}
+function pageLabel(book, pg) { const n = printed(book, pg); return n ? 'पृ. ' + toDev(n) : 'प्रारम्भिक पृ. ' + toDev(pg); }
+function pdfPageFor(book, n) {
+  if (!book.labels) return Math.min(book.pages, Math.max(1, n + book.pageOffset));
+  const i = book.labels.indexOf(n); return i >= 0 ? i + 1 : null;
+}
+const maxPrinted = book => book.labels ? Math.max(...book.labels) : book.pages - book.pageOffset;
+const abbr = book => book.secAbbr || 'प्र.';
+const secWord = book => book.secLabel || 'प्रकरण';
+const firstSec = book => book.firstSection || book.sections[0].id;
+
+/* "पञ्चदशी ९.२", "anubhuti 3.14", "6.12" → {book, num, n} */
+const fold = s => normMap(roman2dev(String(s).toLowerCase()), true).replace(/\s+/g, '');
+function parseRef(q, lib, defBook) {
+  const t = String(q).trim().replace(/[०-९]/g, d => DEV.indexOf(d));
+  const m = t.match(/^(.*?)[\s,:]*(\d{1,2})\s*[.:,/\s]\s*(\d{1,3})\s*$/);
+  if (!m) return null;
+  let book = null; const name = m[1].trim();
+  if (name) {
+    const f = fold(name);
+    book = lib.find(b => (b.aliases || []).concat([b.title, b.titleRoman, b.id]).some(a => { const fa = fold(a); return fa && (fa.startsWith(f) || f.startsWith(fa)); }));
+    if (!book) return null;
+  } else book = lib.find(b => b.id === defBook) || null;
+  if (!book) return null;
+  return { book: book.id, title: book.title, num: +m[2], n: +m[3] };
 }
 function sectionForPage(book, pg) {
   return book.sections.find(s => pg >= s.start && pg <= s.end);
 }
 function secLabel(s) { return s.num ? `${toDev(s.num)}. ${s.title}` : s.title; }
+async function gotoRef(r) {
+  const book = await getBook(r.book);
+  const sec = book.sections.find(s => s.num === r.num);
+  if (!sec) { toast(`${book.title} में ${abbr(book)} ${toDev(r.num)} नहीं है`); return false; }
+  location.hash = `#/b/${r.book}/r/${sec.id}?v=${r.n}`; return true;
+}
 
 /* ---------------- UI helpers ---------------- */
 let toastT;
@@ -169,6 +200,7 @@ async function route() {
       if (!parts[2]) return await viewBook(parts[1]);
       if (parts[2] === 'r' && parts[3]) return await viewReader(parts[1], parts[3], q);
       if (parts[2] === 'slokas') return await viewSlokas(parts[1]);
+      if (parts[2] === 'v' && parts[3]) { const lib = await getLibrary(); const r = parseRef(parts[3], lib, parts[1]); if (r && await gotoRef(r)) return; location.hash = '#/b/' + parts[1]; return; }
       if (parts[2] === 'page' && parts[3]) { await viewBook(parts[1]); return openPage(parts[1], +parts[3]); }
     }
     if (parts[0] === 'search') return await viewSearch(q);
@@ -192,26 +224,37 @@ const CREDIT = `<div class="credit">
 
 async function viewLibrary() {
   setBar();
-  const lib = await getLibrary();
+  const libAll = await getLibrary(); const lib = libAll.filter(b => !b.soon); lib.soon = libAll.filter(b => b.soon);
   app.innerHTML = `<div class="wrap">
     <section class="hero">
       <div class="om">ॐ</div>
       <h1>दक्षिणामूर्ति ग्रन्थमाला</h1>
       <p>श्रीदक्षिणामूर्ति मठ प्रकाशन के वेदान्त ग्रन्थ — मूल श्लोक, अर्थ एवं विस्तृत व्याख्या, खोज और मूल पृष्ठों के साथ।</p>
     </section>
+    <form class="jump" id="jump">
+      <input id="jump-q" placeholder="श्लोक पर जाएँ — जैसे पञ्चदशी ९.२ या anubhuti 3.14" autocomplete="off" aria-label="श्लोक संदर्भ">
+      <button class="btn primary" type="submit">जाएँ</button>
+    </form>
     <div class="ornament">✦</div>
     <div class="shelf">
       ${lib.map(b => `<a class="book-card" href="#/b/${b.id}">
         <img src="${b.cover}" alt="${esc(b.title)} मुखपृष्ठ" loading="lazy">
         <div><div class="rom">${esc(b.titleRoman)}</div><h2>${esc(b.title)}</h2>
-        <div class="meta">${esc(b.author)}<br>व्याख्या: ${esc(b.commentator)}</div>
+        <div class="meta">${esc(b.author)}${b.subtitle ? '<br>' + esc(b.subtitle) : ''}<br>व्याख्या: ${esc(b.commentator)}</div>
         <div class="stats">${toDev(b.slokas)} श्लोक · ${toDev(b.pages)} पृष्ठ</div></div></a>`).join('')}
-      <div class="book-card soon"><div class="ph">अ</div><div><div class="rom">Anubhūti Prakāśa</div><h2>अनुभूतिप्रकाश</h2><div class="meta">शीघ्र उपलब्ध</div></div></div>
-      <div class="book-card soon"><div class="ph">कृ</div><div><div class="rom">Śrī Kṛṣṇa Sandeśa</div><h2>श्रीकृष्ण-सन्देश</h2><div class="meta">शीघ्र उपलब्ध</div></div></div>
+      ${(lib.soon || []).map(b => `<div class="book-card soon"><div class="ph">${esc(b.mark)}</div><div><div class="rom">${esc(b.titleRoman)}</div><h2>${esc(b.title)}</h2><div class="meta">${esc(b.note || 'शीघ्र उपलब्ध')}</div></div></div>`).join('')}
     </div>
     ${CREDIT}
-    <p class="footer"><a href="#/about">इस ऐप के बारे में</a> · <a href="${REPO}" target="_blank" rel="noopener">GitHub</a></p>
+    <p class="footer"><a href="#/about">इस ऐप के बारे में</a> · <a href="${REPO}" target="_blank" rel="noopener">GitHub</a>${installEvt ? ' · <a href="#" id="install">📲 ऐप इंस्टॉल करें</a>' : ''}</p>
   </div>`;
+  $('#jump').onsubmit = async e => {
+    e.preventDefault();
+    const q = $('#jump-q').value; const r = parseRef(q, lib, null);
+    if (r) { gotoRef(r); return; }
+    if (/\d|[०-९]/.test(q)) toast('संदर्भ समझ नहीं आया — जैसे “पञ्चदशी ९.२” लिखें');
+    else if (q.trim()) location.hash = '#/search?q=' + encodeURIComponent(q.trim());
+  };
+  const ib = $('#install'); if (ib) ib.onclick = e => { e.preventDefault(); doInstall(); };
   window.scrollTo(0, 0);
 }
 
@@ -246,29 +289,33 @@ async function viewBook(id) {
     </div>
     <div class="actions">
       ${lastSec ? `<a class="btn primary" href="#/b/${id}/r/${lastSec.id}?b=${last.b}">▶ पढ़ना जारी रखें — ${esc(lastSec.title.replace('ब्रह्मानन्द में ', ''))}</a>`
-               : `<a class="btn primary" href="#/b/${id}/r/p1">▶ पढ़ना आरम्भ करें</a>`}
+               : `<a class="btn primary" href="#/b/${id}/r/${firstSec(book)}">▶ पढ़ना आरम्भ करें</a>`}
       <a class="btn" href="#/b/${id}/slokas">श्लोक सूची</a>
       <a class="btn" href="#/search?book=${id}">खोजें</a>
     </div>
     <div class="actions" style="margin-top:10px">
       <form id="goto" class="search-input" style="box-shadow:none;padding:2px 4px 2px 12px;border-radius:999px;max-width:340px">
-        <input id="goto-n" inputmode="numeric" placeholder="पृष्ठ संख्या (१–${toDev(book.pages - book.pageOffset)})" style="font-size:15px;padding:6px 0" aria-label="पृष्ठ संख्या">
+        <input id="goto-n" inputmode="numeric" placeholder="पृष्ठ संख्या (१–${toDev(maxPrinted(book))})" style="font-size:15px;padding:6px 0" aria-label="पृष्ठ संख्या">
         <button class="btn" type="submit" style="padding:5px 12px">पाठ</button>
         <button class="btn" type="button" id="goto-img" style="padding:5px 12px">मूल</button>
       </form>
     </div>
     ${Object.entries(groups).map(([g, list]) => `<div class="toc-group"><h3>${esc(book.groups[g] || '')}</h3><ul class="toc">` +
-      list.map(s => `<li><a href="#/b/${id}/r/${s.id}"><span class="n">${s.num ? toDev(s.num) : '•'}</span><span class="t">${esc(s.title)}</span>
+      list.map(s => `<li><a href="#/b/${id}/r/${s.id}"><span class="n">${s.num ? toDev(s.num) : '•'}</span><span class="t">${esc(s.title)}${s.sub ? `<small class="sub">${esc(s.sub)}</small>` : ''}</span>
         <span class="s">${s.slokas ? toDev(s.slokas) + ' श्लोक · ' : ''}${pageLabel(book, s.start)}</span></a></li>`).join('') + '</ul></div>').join('')}
     <div class="toc-group"><h3>मूल पृष्ठ</h3><ul class="toc">
       ${book.extraPages.map(p => `<li><a href="#/b/${id}/page/${p.page}"><span class="n">❖</span><span class="t">${esc(p.title)}</span><span class="s">स्कैन</span></a></li>`).join('')}
     </ul></div>
+    <div class="offline" id="offline"></div>
     ${CREDIT}
   </div>`;
+  renderOffline(book);
   const pnum = () => {
     const v = $('#goto-n').value.trim().replace(/[०-९]/g, d => DEV.indexOf(d));
     const n = parseInt(v, 10); if (!n) return null;
-    return Math.min(book.pages, Math.max(1, n + book.pageOffset));
+    const pg = pdfPageFor(book, n);
+    if (!pg) toast('यह पृष्ठ संख्या नहीं मिली');
+    return pg;
   };
   $('#goto').onsubmit = e => { e.preventDefault(); const pg = pnum(); if (pg) gotoPageText(book, pg); };
   $('#goto-img').onclick = () => { const pg = pnum(); if (pg) openPage(id, pg); };
@@ -321,7 +368,9 @@ function renderBlocks(book, sec) {
     const mk = bm.has(i) ? ' marked' : '';
     if (t === 'v') {
       const main = n ? ' s' : ' q';
-      html += `<div class="blk v${main}${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${n ? `<span class="vnum">प्र. ${toDev(sec.num)} · श्लोक ${toDev(n)}</span>` : ''}${esc(x)}</div>`;
+      html += `<div class="blk v${main}${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${n ? `<span class="vnum">${abbr(book)} ${toDev(sec.num)} · श्लोक ${toDev(n)}</span>` : ''}${esc(x)}</div>`;
+    } else if (t === 'sh') {
+      html += `<h3 class="blk sh${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${esc(x)}</h3>`;
     } else {
       html += `<p class="blk ${t}${cont}${mk}" id="b${i}" data-i="${i}" data-pg="${pg}">${esc(x)}</p>`;
     }
@@ -343,7 +392,7 @@ async function viewReader(id, sid, q) {
   app.innerHTML = `<div class="reader-shell">
     <article class="reader" id="reader" lang="hi">
       <header class="sec-head">
-        <div class="k">${esc(book.title)} · ${esc(groupName)}</div>
+        <div class="k">${esc(book.title)} · ${esc(meta.sub || groupName)}</div>
         <h1>${meta.num ? `<span style="color:var(--accent)">${toDev(meta.num)}.</span> ` : ''}${esc(meta.title)}</h1>
         <div class="orn">❁</div>
       </header>
@@ -438,7 +487,7 @@ async function viewReader(id, sid, q) {
       } else if (a === 'page') {
         openPage(id, b[1]);
       } else if (a === 'err') {
-        const title = `पाठ-त्रुटि: ${book.titleRoman} ${meta.num ? 'प्र. ' + meta.num : meta.title}, ${pageLabel(book, b[1])}`;
+        const title = `पाठ-त्रुटि: ${book.titleRoman} ${meta.num ? abbr(book) + ' ' + meta.num : meta.title}, ${pageLabel(book, b[1])}`;
         const body = `**स्थान:** ${where}\n**लिंक:** ${link}\n\n**वर्तमान पाठ:**\n> ${b[2].slice(0, 600).replace(/\n/g, '\n> ')}\n\n**सही पाठ / टिप्पणी:**\n\n`;
         window.open(`${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener');
       }
@@ -488,7 +537,7 @@ async function openPage(id, pg) {
   const img = $('#pv-img');
   img.src = `${book.imgDir}/${pg}.webp`;
   img.alt = `मूल पृष्ठ — ${pageLabel(book, pg)}`;
-  $('#pv-label').textContent = `${pageLabel(book, pg)} / ${toDev(book.pages - book.pageOffset)}`;
+  $('#pv-label').textContent = `${pageLabel(book, pg)} / ${toDev(maxPrinted(book))}`;
   $('#pv-prev').disabled = pg <= 1; $('#pv-next').disabled = pg >= book.pages;
   $('#pv-totext').hidden = !sectionForPage(book, pg);
   $('#pv-scroll').scrollTop = 0; img.classList.remove('zoom');
@@ -538,6 +587,7 @@ async function viewSlokas(id) {
     <div class="search-box"><div class="search-input">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
       <input id="sl-f" placeholder="श्लोक का आरम्भ लिखें, या ६.१२ जैसा संदर्भ" autocomplete="off" aria-label="श्लोक खोजें">
+    </div><p class="hint" style="margin:8px 2px 0">${toDev(sl.length)} श्लोक · संदर्भ सीधे खोलने के लिये लिंक: <code>#/b/${id}/v/${'९.२'}</code></p><div style="display:none">
     </div></div>
     <div id="sl-body"></div></div>`;
   const render = (f) => {
@@ -549,7 +599,7 @@ async function viewSlokas(id) {
       if (ref) rows = rows.filter(r => r[0] === +ref[1] && r[1] === +ref[2]);
       else if (nf) rows = rows.filter(r => normMap(r[4], true).includes(nf));
       if (!rows.length) return;
-      html += `<h3 class="sl-sec">${toDev(s.num)}. ${esc(s.title)}</h3><ul class="sl-list">` +
+      html += `<h3 class="sl-sec">${toDev(s.num)}. ${esc(s.title)}${s.sub ? ` <small class="sub">${esc(s.sub)}</small>` : ''}</h3><ul class="sl-list">` +
         rows.map(r => `<li><a href="#/b/${id}/r/${s.id}?v=${r[1]}"><span class="ref">${toDev(r[0])}.${toDev(r[1])}</span><span class="ln">${esc(r[4])}</span><span class="pgn">${pageLabel(book, r[3])}</span></a></li>`).join('') + '</ul>';
     });
     $('#sl-body').innerHTML = html || '<p class="empty">कोई श्लोक नहीं मिला</p>';
@@ -573,7 +623,7 @@ async function loadIndex(id) {
   return (searchIndex[id] = { book, items });
 }
 async function viewSearch(q) {
-  const lib = await getLibrary();
+  const lib = (await getLibrary()).filter(b => !b.soon);
   const id = q.get('book') || lib[0].id;
   const book = await getBook(id);
   setBar({ title: 'खोजें · ' + book.title, back: '#/b/' + id, toc: true });
@@ -585,6 +635,7 @@ async function viewSearch(q) {
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
         <input id="sq" type="search" placeholder="शब्द खोजें — जैसे ब्रह्मानन्द, कूटस्थ" value="${esc(st.q)}" autocomplete="off" aria-label="खोज">
       </form>
+      <div class="filters books">${lib.map(b => `<button class="chip ${b.id === id ? 'on' : ''}" data-book="${b.id}">${esc(b.title)}</button>`).join('')}</div>
       <div class="filters">
         <button class="chip" data-m="all">सब</button>
         <button class="chip" data-m="v">केवल श्लोक</button>
@@ -592,7 +643,7 @@ async function viewSearch(q) {
         <button class="chip" data-fz>सरल मिलान</button>
       </div>
     </div>
-    <div id="sr"><p class="hint">पूरे ग्रन्थ (${toDev(book.pages)} पृष्ठ) में खोजें। हिन्दी/संस्कृत में लिखें, या रोमन में भी — जैसे <kbd>kutastha</kbd>, <kbd>brahmAnanda</kbd>।<br>
+    <div id="sr"><p class="hint">पूरे ग्रन्थ (${toDev(book.pages)} पृष्ठ) में खोजें। श्लोक संदर्भ भी लिख सकते हैं — जैसे <kbd>९.२</kbd>। हिन्दी/संस्कृत में लिखें, या रोमन में भी — जैसे <kbd>kutastha</kbd>, <kbd>brahmAnanda</kbd>।<br>
     “सरल मिलान” चालू होने पर ह्रस्व-दीर्घ मात्रा (ि/ी, ु/ू), े/ै, ँ/ं, श/ष तथा ब/व का भेद अनदेखा किया जाता है — जिससे OCR की छोटी त्रुटियों के बावजूद परिणाम मिलें।</p></div>
   </div>`;
   const input = $('#sq');
@@ -607,6 +658,9 @@ async function viewSearch(q) {
     history.replaceState(null, '', `#/search?book=${id}${qq ? '&q=' + encodeURIComponent(qq) : ''}${st.mode !== 'all' ? '&m=' + st.mode : ''}${st.fz ? '' : '&fz=0'}`);
     if (!qq) return;
     const sr = $('#sr');
+    const ref = parseRef(qq, lib, id);
+    const refHtml = ref ? `<a class="res ref-hit" href="#/b/${ref.book}/v/${ref.num}.${ref.n}"><div class="where">श्लोक पर जाएँ</div><div class="snip">${esc(ref.title)} ${toDev(ref.num)}.${toDev(ref.n)} →</div></a>` : '';
+    if (ref && /^[\d०-९\s.:,/]+$/.test(qq)) { sr.innerHTML = refHtml; return; }
     if (!searchIndex[id]) sr.innerHTML = '<p class="loading">खोज-सूची तैयार हो रही है…</p>';
     const { items } = await loadIndex(id);
     const dq = roman2dev(qq);
@@ -616,12 +670,12 @@ async function viewSearch(q) {
     const res = items.filter(it => (st.mode === 'all' || (st.mode === 'v' ? it.t === 'v' : it.t !== 'v')) && words.every(w => it[key].includes(w)));
     const counts = {}; res.forEach(r => counts[r.si] = (counts[r.si] || 0) + 1);
     const sec = book.sections;
-    sr.innerHTML = `<p class="res-meta">${dq !== qq ? `“${esc(dq)}” — ` : ''}${toDev(res.length)} परिणाम${res.length ? ' · ' + Object.entries(counts).map(([si, c]) => `${sec[si].num ? 'प्र. ' + toDev(sec[si].num) : sec[si].title}: ${toDev(c)}`).join(', ') : ''}</p>` +
+    sr.innerHTML = refHtml + `<p class="res-meta">${dq !== qq ? `“${esc(dq)}” — ` : ''}${toDev(res.length)} परिणाम${res.length ? ' · ' + Object.entries(counts).map(([si, c]) => `${sec[si].num ? abbr(book) + ' ' + toDev(sec[si].num) : sec[si].title}: ${toDev(c)}`).join(', ') : ''}</p>` +
       res.slice(0, limit).map(it => {
         const s = sec[it.si];
         const snip = snippet(it.x, words, st.fz);
         return `<a class="res ${it.t === 'v' ? 'v' : ''}" href="#/b/${id}/r/${s.id}?b=${it.i}&q=${encodeURIComponent(qq)}${st.fz ? '&fz=1' : ''}">
-          <div class="where">${s.num ? 'प्र. ' + toDev(s.num) + ' · ' : ''}${esc(s.title)}${it.t === 'v' && it.n ? ' · श्लोक ' + toDev(it.n) : ''} · ${pageLabel(book, it.pg)}</div>
+          <div class="where">${s.num ? abbr(book) + ' ' + toDev(s.num) + ' · ' : ''}${esc(s.title)}${it.t === 'v' && it.n ? ' · श्लोक ' + toDev(it.n) : ''} · ${pageLabel(book, it.pg)}</div>
           <div class="snip">${snip}</div></a>`;
       }).join('') +
       (res.length > limit ? `<p style="text-align:center"><button class="btn" id="more">और दिखाएँ (${toDev(res.length - limit)})</button></p>` : '') +
@@ -633,6 +687,9 @@ async function viewSearch(q) {
   $('#sf').onsubmit = e => { e.preventDefault(); st.q = input.value; run(); input.blur(); };
   $$('[data-m]').forEach(c => c.onclick = () => { st.mode = c.dataset.m; syncChips(); limit = 60; run(); });
   $('[data-fz]').onclick = () => { st.fz = !st.fz; syncChips(); limit = 60; run(); };
+  $$('[data-book]').forEach(c => c.onclick = () => {
+    location.hash = `#/search?book=${c.dataset.book}${st.q ? '&q=' + encodeURIComponent(st.q) : ''}${st.mode !== 'all' ? '&m=' + st.mode : ''}${st.fz ? '' : '&fz=0'}`;
+  });
   if (st.q) run(); else setTimeout(() => input.focus(), 50);
   window.scrollTo(0, 0);
 }
@@ -700,6 +757,60 @@ function viewAbout() {
     <p class="footer"><a href="${REPO}" target="_blank" rel="noopener">GitHub पर स्रोत</a></p>
   </div>`;
   window.scrollTo(0, 0);
+}
+
+/* ---------- PWA: install + offline download ---------- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; const f = $('.footer'); if (f && !$('#install') && location.hash.replace('#', '').replace('/', '') === '') route(); });
+async function doInstall() {
+  if (!installEvt) { toast('ब्राउज़र मेनू से “Add to Home screen / होम स्क्रीन पर जोड़ें” चुनें'); return; }
+  installEvt.prompt(); try { await installEvt.userChoice; } catch (e) { } installEvt = null;
+}
+const OFF_DATA = 'dg-data-v1';
+async function offlineState(book) {
+  if (!('caches' in window)) return null;
+  try {
+    const c = await caches.open(OFF_DATA);
+    const urls = book.sections.map(s => `data/${book.id}/${s.id}.json`);
+    let have = 0; for (const u of urls) if (await c.match(new URL(u, location.href).href)) have++;
+    const img = await c.match(new URL(`${book.imgDir}/${book.pages}.webp`, location.href).href);
+    return { text: have === urls.length, partial: have, total: urls.length, scans: !!img };
+  } catch (e) { return null; }
+}
+async function renderOffline(book) {
+  const el = $('#offline'); if (!el) return;
+  const st = await offlineState(book);
+  if (!st) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="toc-group"><h3>ऑफ़लाइन पढ़ें</h3>
+    <p class="hint" style="margin:0 0 10px">इंटरनेट के बिना पढ़ने के लिये ग्रन्थ इसी डिवाइस में सहेजें। ${installEvt ? '' : 'ऐप की तरह उपयोग हेतु ब्राउज़र मेनू से “होम स्क्रीन पर जोड़ें” चुनें।'}</p>
+    <div class="actions" style="margin-top:0">
+      <button class="btn" id="off-text">${st.text ? '✓ पाठ सहेजा गया' : '⬇ पाठ सहेजें (लगभग १० MB)'}</button>
+      <button class="btn" id="off-scan">${st.scans ? '✓ मूल पृष्ठ सहेजे गए' : `⬇ मूल पृष्ठ भी सहेजें (${toDev(book.pages)} चित्र, ~${toDev(Math.round(book.pages * 0.08))} MB)`}</button>
+      ${installEvt ? '<button class="btn" id="off-install">📲 ऐप इंस्टॉल करें</button>' : ''}
+    </div><div class="hint" id="off-prog" style="margin-top:8px"></div></div>`;
+  $('#off-text').onclick = () => downloadBook(book, false);
+  $('#off-scan').onclick = () => downloadBook(book, true);
+  const ib = $('#off-install'); if (ib) ib.onclick = doInstall;
+}
+let downloading = false;
+async function downloadBook(book, scans) {
+  if (downloading) return; downloading = true;
+  const prog = $('#off-prog');
+  try {
+    const c = await caches.open(OFF_DATA);
+    const urls = [`data/${book.id}/book.json`, `data/${book.id}/slokas.json`, ...book.sections.map(s => `data/${book.id}/${s.id}.json`)];
+    if (scans) for (let p = 1; p <= book.pages; p++) urls.push(`${book.imgDir}/${p}.webp`);
+    let done = 0, failed = 0;
+    const work = async (u) => {
+      const abs = new URL(u, location.href).href;
+      if (!(await c.match(abs))) { try { const r = await fetch(abs); if (r.ok) await c.put(abs, r); else failed++; } catch (e) { failed++; } }
+      done++; if (prog && (done % 10 === 0 || done === urls.length)) prog.textContent = `सहेजा जा रहा है… ${toDev(done)} / ${toDev(urls.length)}`;
+    };
+    let i = 0; await Promise.all(Array.from({ length: 6 }, async () => { while (i < urls.length) await work(urls[i++]); }));
+    toast(failed ? `${toDev(failed)} फ़ाइलें नहीं सहेजी जा सकीं — पुनः प्रयास करें` : 'सहेज लिया गया — अब ऑफ़लाइन पढ़ सकते हैं');
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  } catch (e) { toast('सहेजना सम्भव नहीं हुआ'); }
+  downloading = false; renderOffline(book);
 }
 
 route();

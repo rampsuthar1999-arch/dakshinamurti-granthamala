@@ -314,3 +314,18 @@ input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
 #pv-img { cursor: zoom-in; transition: max-width .15s; }
 #pv-img.zoom { max-width: none; width: 200%; cursor: zoom-out; }
 @media (min-width: 900px) { #pv-img.zoom { width: 150%; } }
+
+/* multi-book additions */
+.jump { display: flex; gap: 8px; max-width: 560px; margin: 18px auto 0; background: var(--paper); border: 1px solid var(--rule); border-radius: 999px; padding: 5px 5px 5px 18px; box-shadow: var(--shadow); }
+.jump:focus-within { border-color: var(--accent); }
+.jump input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: 16px var(--body); color: var(--ink); }
+.jump .btn { padding: 7px 18px; }
+small.sub { display: block; color: var(--muted); font: 12.5px var(--ui); margin-top: 2px; }
+.sl-sec small.sub { display: inline; margin-left: 6px; }
+.blk.sh { font-family: var(--ui); font-size: .82em; letter-spacing: .04em; font-weight: 600; color: var(--accent); text-align: center; margin: 1.6em 0 -.4em; text-indent: 0; }
+.ref-hit { border-color: var(--accent); background: var(--accent-soft); }
+.ref-hit .snip { font-weight: 600; }
+.filters.books { margin-top: 10px; }
+.filters.books .chip { font-family: var(--body); }
+code { font-size: .9em; background: var(--accent-soft); padding: 0 5px; border-radius: 5px; }
+body.verses-only .blk.sh { display: block; }
