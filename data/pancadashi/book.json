@@ -1,0 +1,178 @@
+{
+ "id": "pancadashi",
+ "title": "पञ्चदशी",
+ "titleRoman": "Pañcadaśī",
+ "author": "श्रीमद्विद्यारण्यस्वामी",
+ "commentator": "श्री १०८ स्वामी महेशानन्द गिरि जी महाराज",
+ "publisher": "श्रीदक्षिणामूर्ति मठ प्रकाशन, वाराणसी",
+ "series": "श्रीदक्षिणामूर्तिसंस्कृतग्रन्थमाला – ८२",
+ "pages": 1530,
+ "pageOffset": 10,
+ "imgDir": "pages/pancadashi",
+ "groups": {
+  "front": "प्रारम्भिक",
+  "viveka": "पञ्च विवेक",
+  "dipa": "पञ्च दीप",
+  "ananda": "पञ्च आनन्द (ब्रह्मानन्द)"
+ },
+ "extraPages": [
+  {
+   "title": "मुखपृष्ठ",
+   "page": 1
+  },
+  {
+   "title": "विषय सूची",
+   "page": 10
+  },
+  {
+   "title": "श्लोकसूची (मुद्रित)",
+   "page": 1507
+  }
+ ],
+ "sections": [
+  {
+   "id": "bhumika",
+   "num": 0,
+   "title": "भूमिका",
+   "group": "front",
+   "start": 4,
+   "end": 8,
+   "slokas": 0
+  },
+  {
+   "id": "p1",
+   "num": 1,
+   "title": "तत्त्वविवेक प्रकरण",
+   "group": "viveka",
+   "start": 11,
+   "end": 148,
+   "slokas": 65
+  },
+  {
+   "id": "p2",
+   "num": 2,
+   "title": "महाभूतविवेक प्रकरण",
+   "group": "viveka",
+   "start": 149,
+   "end": 262,
+   "slokas": 109
+  },
+  {
+   "id": "p3",
+   "num": 3,
+   "title": "पञ्चकोशविवेक प्रकरण",
+   "group": "viveka",
+   "start": 263,
+   "end": 328,
+   "slokas": 43
+  },
+  {
+   "id": "p4",
+   "num": 4,
+   "title": "द्वैतविवेक प्रकरण",
+   "group": "viveka",
+   "start": 329,
+   "end": 408,
+   "slokas": 69
+  },
+  {
+   "id": "p5",
+   "num": 5,
+   "title": "महावाक्यविवेक प्रकरण",
+   "group": "viveka",
+   "start": 409,
+   "end": 416,
+   "slokas": 8
+  },
+  {
+   "id": "p6",
+   "num": 6,
+   "title": "चित्रदीप प्रकरण",
+   "group": "dipa",
+   "start": 417,
+   "end": 684,
+   "slokas": 290
+  },
+  {
+   "id": "p7",
+   "num": 7,
+   "title": "तृप्तिदीप प्रकरण",
+   "group": "dipa",
+   "start": 685,
+   "end": 946,
+   "slokas": 295
+  },
+  {
+   "id": "p8",
+   "num": 8,
+   "title": "कूटस्थदीप प्रकरण",
+   "group": "dipa",
+   "start": 947,
+   "end": 1010,
+   "slokas": 76
+  },
+  {
+   "id": "p9",
+   "num": 9,
+   "title": "ध्यानदीप प्रकरण",
+   "group": "dipa",
+   "start": 1011,
+   "end": 1160,
+   "slokas": 158
+  },
+  {
+   "id": "p10",
+   "num": 10,
+   "title": "नाटकदीप प्रकरण",
+   "group": "dipa",
+   "start": 1161,
+   "end": 1186,
+   "slokas": 26
+  },
+  {
+   "id": "p11",
+   "num": 11,
+   "title": "ब्रह्मानन्द में योगानन्द प्रकरण",
+   "group": "ananda",
+   "start": 1187,
+   "end": 1298,
+   "slokas": 133
+  },
+  {
+   "id": "p12",
+   "num": 12,
+   "title": "ब्रह्मानन्द में आत्मानन्द प्रकरण",
+   "group": "ananda",
+   "start": 1299,
+   "end": 1380,
+   "slokas": 90
+  },
+  {
+   "id": "p13",
+   "num": 13,
+   "title": "ब्रह्मानन्द में अद्वैतानन्द प्रकरण",
+   "group": "ananda",
+   "start": 1381,
+   "end": 1446,
+   "slokas": 105
+  },
+  {
+   "id": "p14",
+   "num": 14,
+   "title": "ब्रह्मानन्द में विद्यानन्द प्रकरण",
+   "group": "ananda",
+   "start": 1447,
+   "end": 1484,
+   "slokas": 65
+  },
+  {
+   "id": "p15",
+   "num": 15,
+   "title": "ब्रह्मानन्द में विषयानन्द प्रकरण",
+   "group": "ananda",
+   "start": 1485,
+   "end": 1506,
+   "slokas": 35
+  }
+ ]
+}

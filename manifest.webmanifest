@@ -1,0 +1,10 @@
+{
+  "name": "दक्षिणामूर्ति ग्रन्थमाला",
+  "short_name": "ग्रन्थमाला",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#faf6ee",
+  "theme_color": "#faf6ee",
+  "lang": "hi",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
